@@ -1,0 +1,279 @@
+/* Table Module Styles */
+
+.tableWrapper {
+  background-color: var(--card-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.tableBordered {
+  border: 1px solid var(--border);
+}
+
+.tableContainer {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+/* Table Variants */
+.tableDefault td,
+.tableDefault th {
+  padding: var(--space-4);
+}
+
+.tableCompact td,
+.tableCompact th {
+  padding: var(--space-3);
+}
+
+.tableComfortable td,
+.tableComfortable th {
+  padding: var(--space-5);
+}
+
+/* Table Head */
+.tableHead {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: var(--white);
+}
+
+.tableHeader {
+  text-align: left;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.headerContent {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-content: space-between;
+}
+
+/* Sortable Headers */
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: var(--transition-base);
+}
+
+.sortable:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sortable:focus {
+  outline: 2px solid var(--white);
+  outline-offset: -2px;
+}
+
+.sorted {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.sortIcon {
+  font-size: var(--font-size-base);
+  opacity: 0.7;
+  transition: var(--transition-base);
+}
+
+.sortable:hover .sortIcon {
+  opacity: 1;
+}
+
+/* Table Body */
+.tableBody {
+  background-color: var(--card-bg);
+}
+
+.tableRow {
+  border-bottom: 1px solid var(--border);
+  transition: var(--transition-base);
+}
+
+.tableRow:last-child {
+  border-bottom: none;
+}
+
+.rowHoverable:hover {
+  background-color: var(--gray-50);
+}
+
+.rowClickable {
+  cursor: pointer;
+}
+
+.rowClickable:active {
+  background-color: var(--gray-100);
+}
+
+.tableCell {
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
+/* Striped Variant */
+.tableStriped .tableRow:nth-child(even) {
+  background-color: var(--gray-50);
+}
+
+.tableStriped .rowHoverable:nth-child(even):hover {
+  background-color: var(--gray-100);
+}
+
+/* Empty State */
+.emptyCell {
+  text-align: center;
+  padding: var(--space-12) var(--space-6) !important;
+  color: var(--text-light);
+  font-style: italic;
+}
+
+/* Loading Spinner */
+.loadingSpinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--gray-200);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto var(--space-3);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive Table */
+@media (max-width: 768px) {
+  .tableWrapper {
+    border-radius: var(--radius-md);
+  }
+
+  .table {
+    font-size: var(--font-size-xs);
+  }
+
+  .tableDefault td,
+  .tableDefault th {
+    padding: var(--space-3);
+  }
+
+  .tableCompact td,
+  .tableCompact th {
+    padding: var(--space-2);
+  }
+
+  .tableComfortable td,
+  .tableComfortable th {
+    padding: var(--space-4);
+  }
+
+  .tableHeader {
+    font-size: 0.65rem;
+  }
+
+  /* Stack table on very small screens */
+  .tableContainer {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Accessibility */
+.tableRow:focus-within {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+/* Custom Cell Styles */
+.cellBold {
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.cellMuted {
+  color: var(--text-light);
+}
+
+.cellCenter {
+  text-align: center;
+}
+
+.cellRight {
+  text-align: right;
+}
+
+/* Action Buttons in Table */
+.actionButtons {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.actionButton {
+  padding: var(--space-2);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-lg);
+  border-radius: var(--radius);
+  transition: var(--transition-base);
+}
+
+.actionButton:hover {
+  background-color: var(--gray-100);
+  transform: scale(1.1);
+}
+
+.actionButton:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Badge in Table */
+.tableBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.badgeSuccess {
+  background-color: rgba(72, 187, 120, 0.15);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
+.badgeDanger {
+  background-color: rgba(245, 101, 101, 0.15);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+.badgeWarning {
+  background-color: rgba(237, 137, 54, 0.15);
+  color: var(--warning);
+  border: 1px solid var(--warning);
+}
+
+.badgeInfo {
+  background-color: rgba(66, 153, 225, 0.15);
+  color: var(--info);
+  border: 1px solid var(--info);
+}

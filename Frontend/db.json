@@ -1,0 +1,94 @@
+{
+  "medicines": [
+    {
+      "id": "1",
+      "name": "Paracetamol",
+      "category": "Pain Relief",
+      "stock": 150,
+      "expiryDate": "2026-03-15",
+      "manufacturer": "PharmaCorp",
+      "batchNumber": "PC2024001"
+    },
+    {
+      "id": "2",
+      "name": "Amoxicillin",
+      "category": "Antibiotic",
+      "stock": 8,
+      "expiryDate": "2025-12-20",
+      "manufacturer": "MediLife",
+      "batchNumber": "ML2024023"
+    },
+    {
+      "id": "3",
+      "name": "Ibuprofen",
+      "category": "Pain Relief",
+      "stock": 45,
+      "expiryDate": "2025-11-30",
+      "manufacturer": "HealthPlus",
+      "batchNumber": "HP2024105"
+    },
+    {
+      "id": "4",
+      "name": "Aspirin",
+      "category": "Pain Relief",
+      "stock": 5,
+      "expiryDate": "2025-12-05",
+      "manufacturer": "PharmaCorp",
+      "batchNumber": "PC2024089"
+    },
+    {
+      "id": "5",
+      "name": "Omeprazole",
+      "category": "Gastric",
+      "stock": 80,
+      "expiryDate": "2026-06-10",
+      "manufacturer": "GastroCare",
+      "batchNumber": "GC2024067"
+    },
+    {
+      "id": "6",
+      "name": "Metformin",
+      "category": "Diabetes",
+      "stock": 120,
+      "expiryDate": "2026-01-25",
+      "manufacturer": "DiabetesRx",
+      "batchNumber": "DR2024034"
+    },
+    {
+      "id": "7",
+      "name": "Lisinopril",
+      "category": "Blood Pressure",
+      "stock": 6,
+      "expiryDate": "2025-12-15",
+      "manufacturer": "CardioMed",
+      "batchNumber": "CM2024098"
+    },
+    {
+      "id": "8",
+      "name": "Cetirizine",
+      "category": "Allergy",
+      "stock": 90,
+      "expiryDate": "2026-04-20",
+      "manufacturer": "AllergyFree",
+      "batchNumber": "AF2024112"
+    },
+    {
+      "id": "9",
+      "name": "Azithromycin",
+      "category": "Antibiotic",
+      "stock": 3,
+      "expiryDate": "2025-12-01",
+      "manufacturer": "MediLife",
+      "batchNumber": "ML2024056"
+    },
+    {
+      "id": "10",
+      "name": "Vitamin D3",
+      "category": "Supplement",
+      "stock": 200,
+      "expiryDate": "2026-08-30",
+      "manufacturer": "NutriHealth",
+      "batchNumber": "NH2024145"
+    }
+  ]
+}

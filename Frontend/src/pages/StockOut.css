@@ -1,0 +1,245 @@
+.stock-out-page {
+  padding: 2.5rem;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.stock-out-container {
+  display: grid;
+  grid-template-columns: 1fr 450px;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.medicines-panel {
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-light);
+}
+
+.panel-header {
+  margin-bottom: 1.5rem;
+}
+
+.panel-header h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.search-box {
+  margin-top: 1rem;
+}
+
+/* Uses standard input from Input.css instead of custom if possible, keeping class for scope */
+.search-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  transition: all var(--transition-fast);
+  background-color: var(--white);
+  color: var(--text-primary);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.medicines-list {
+  max-height: 600px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-right: 0.5rem;
+}
+
+.medicine-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background-color: var(--white);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.medicine-card:hover {
+  background-color: var(--slate-50);
+  border-color: var(--primary-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.medicine-card.selected {
+  background-color: #eff6ff; /* Blue 50 */
+  border-color: var(--primary);
+  border-width: 2px;
+}
+
+.medicine-info h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.25rem 0;
+}
+
+.medicine-info p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.medicine-stock {
+  display: flex;
+  align-items: center;
+}
+
+.stock-badge {
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.stock-badge.low {
+  background-color: var(--warning-light);
+  color: #b45309;
+}
+
+.stock-badge.good {
+  background-color: var(--success-light);
+  color: var(--success);
+}
+
+.action-panel {
+  position: sticky;
+  top: 100px;
+  height: fit-content;
+}
+
+.panel-card {
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-light);
+}
+
+.panel-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 1.5rem 0;
+}
+
+.selected-medicine {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.selected-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  background-color: var(--slate-50);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+}
+
+.selected-icon {
+  font-size: 2rem;
+}
+
+.selected-header h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.25rem 0;
+}
+
+.selected-header p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.current-stock,
+.remaining-preview {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background-color: var(--white);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+}
+
+.current-stock label,
+.remaining-preview label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stock-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--success);
+}
+
+.remaining-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.no-selection,
+.no-medicines {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.no-selection-icon,
+.no-medicines-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+  color: var(--text-muted);
+}
+
+.no-selection p,
+.no-medicines p {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+@media (max-width: 1024px) {
+  .stock-out-container {
+    grid-template-columns: 1fr;
+  }
+}

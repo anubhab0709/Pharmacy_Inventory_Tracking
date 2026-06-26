@@ -1,0 +1,177 @@
+/* Select Module Styles */
+
+.selectWrapper {
+  margin-bottom: var(--space-6);
+}
+
+.label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.required {
+  color: var(--danger);
+  margin-left: var(--space-1);
+}
+
+.selectContainer {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.select {
+  width: 100%;
+  padding: var(--space-3) var(--space-10) var(--space-3) var(--space-4);
+  font-size: var(--font-size-base);
+  font-family: var(--font-family);
+  line-height: var(--line-height-normal);
+  color: var(--text-primary);
+  background-color: var(--white);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  appearance: none;
+  transition: var(--transition-all);
+}
+
+.select:hover:not(:disabled) {
+  border-color: var(--gray-400);
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Select Variants */
+.selectDefault {
+  background-color: var(--white);
+}
+
+.selectFilled {
+  background-color: var(--gray-100);
+  border-color: transparent;
+}
+
+.selectFilled:hover:not(:disabled) {
+  background-color: var(--gray-200);
+}
+
+.selectFilled:focus {
+  background-color: var(--white);
+  border-color: var(--primary);
+}
+
+/* Select Sizes */
+.selectSmall {
+  padding: var(--space-2) var(--space-8) var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
+.selectMedium {
+  padding: var(--space-3) var(--space-10) var(--space-3) var(--space-4);
+  font-size: var(--font-size-base);
+}
+
+.selectLarge {
+  padding: var(--space-4) var(--space-12) var(--space-4) var(--space-5);
+  font-size: var(--font-size-lg);
+}
+
+/* Select States */
+.selectError {
+  border-color: var(--danger);
+  background-color: rgba(245, 101, 101, 0.05);
+}
+
+.selectError:focus {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(245, 101, 101, 0.1);
+}
+
+.selectDisabled {
+  background-color: var(--gray-100);
+  color: var(--text-light);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.selectDisabled:hover {
+  border-color: var(--border);
+}
+
+/* Custom Arrow */
+.arrow {
+  position: absolute;
+  right: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--text-light);
+  font-size: var(--font-size-xs);
+  transition: var(--transition-base);
+}
+
+.select:focus ~ .arrow {
+  color: var(--primary);
+}
+
+.selectDisabled ~ .arrow {
+  opacity: 0.5;
+}
+
+/* Messages */
+.errorMessage {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--danger);
+  font-weight: var(--font-weight-medium);
+}
+
+.errorMessage::before {
+  content: '⚠';
+  font-size: var(--font-size-base);
+}
+
+.helpText {
+  margin-top: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--text-light);
+  line-height: var(--line-height-relaxed);
+}
+
+/* Option Styles */
+.select option {
+  padding: var(--space-2);
+  background-color: var(--white);
+  color: var(--text-primary);
+}
+
+.select option:disabled {
+  color: var(--text-light);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .selectWrapper {
+    margin-bottom: var(--space-5);
+  }
+
+  .select {
+    font-size: var(--font-size-sm);
+  }
+
+  .selectLarge {
+    font-size: var(--font-size-base);
+    padding: var(--space-3) var(--space-10) var(--space-3) var(--space-4);
+  }
+}
