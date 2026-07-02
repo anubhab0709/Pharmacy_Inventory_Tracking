@@ -117,7 +117,7 @@ export default function Login() {
   const [info, setInfo] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const isSignup = needsSetup || (allowPublicSignup && mode === "signup");
+  const isSignup = mode === "signup" || needsSetup;
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
@@ -346,7 +346,7 @@ export default function Login() {
           </form>
         )}
 
-        {!isSignup && mode === 'signin' && (
+        {mode === "signin" && (
           <form onSubmit={handleSignIn} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             <FInput label="Email" required type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="pharmacy@email.com" autoComplete="email" />
             <FInput label="Password" required type="password" value={form.password} onChange={(e) => set("password", e.target.value)} placeholder="Your password" autoComplete="current-password" />
