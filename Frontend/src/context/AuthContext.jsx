@@ -1,6 +1,17 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import { useNavigate } from "react-router-dom";
-import { setAccessToken, setUnauthorizedHandler, refreshAccessToken } from "../api/client.js";
+import {
+  setAccessToken,
+  setUnauthorizedHandler,
+  refreshAccessToken,
+} from "../api/client.js";
 import {
   login as apiLogin,
   logout as apiLogout,
@@ -35,7 +46,9 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -50,7 +63,11 @@ export function AuthProvider({ children }) {
     (async () => {
       try {
         const data = await bootstrapSession();
-        if (mountedRef.current && data?.user) setUser(data.user);
+        const user = data?.user || data?.data?.user || data?.data;
+
+        if (mountedRef.current && user) {
+          setUser(user);
+        }
       } catch {
         if (mountedRef.current) clearSession();
       } finally {
@@ -61,7 +78,9 @@ export function AuthProvider({ children }) {
 
   const login = async (credentials) => {
     const data = await apiLogin(credentials);
-    setUser(data.user);
+    const user = data?.user || data?.data?.user || data?.data;
+
+    setUser(user);
     return data.user;
   };
 
@@ -69,7 +88,9 @@ export function AuthProvider({ children }) {
 
   const verifyOtp = async (payload) => {
     const data = await apiVerifyOtp(payload);
-    setUser(data.user);
+    const user = data?.user || data?.data?.user || data?.data;
+
+    setUser(user);
     return data.user;
   };
 
@@ -92,18 +113,20 @@ export function AuthProvider({ children }) {
   const isAdmin = user?.role === "admin";
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      loading,
-      isAuthenticated: !!user,
-      login,
-      sendOtp,
-      verifyOtp,
-      logout,
-      refreshUser,
-      canWrite,
-      isAdmin,
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        isAuthenticated: !!user,
+        login,
+        sendOtp,
+        verifyOtp,
+        logout,
+        refreshUser,
+        canWrite,
+        isAdmin,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

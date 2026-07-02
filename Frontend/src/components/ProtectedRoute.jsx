@@ -10,9 +10,8 @@ export default function ProtectedRoute({ children }) {
     return <LoadingScreen message="Loading..." />;
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  if (!loading && !isAuthenticated) {
+    return <Navigate to="/login" replace />;
   }
-
   return children;
 }
