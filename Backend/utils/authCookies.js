@@ -17,7 +17,7 @@ export function refreshCookieOptions() {
   return {
     httpOnly: true,
     secure,
-    sameSite: secure ? "strict" : "lax",
+    sameSite: secure ? "none" : "lax",   // "none" only valid when secure=true
     maxAge: parseRefreshMaxAge(),
     path: "/api/auth",
   };
