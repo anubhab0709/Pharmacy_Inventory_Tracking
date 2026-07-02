@@ -9,6 +9,7 @@ const FILTER_MAP = {
   expired: "Expired",
   critical: "Critical",
   soon: "Expiring Soon",
+  within90: "Within 90 Days",
   warning: "Warning",
   safe: "Safe",
 };
@@ -24,7 +25,14 @@ export default function ExpiryTracker({ medicines = [] }) {
   },[searchParams]);
 
   const sorted=[...medicines].sort((a,b)=>new Date(a.expiryDate)-new Date(b.expiryDate));
-  const filtered=sorted.filter(m=>filter==="All"||getExpiryStatus(m.expiryDate).label===filter);
+  const filtered=sorted.filter(m=>{
+    if (filter === "All") return true;
+    if (filter === "Within 90 Days") {
+      const d = getDaysToExpiry(m.expiryDate);
+      return d >= 0 && d <= 90;
+    }
+    return getExpiryStatus(m.expiryDate).label === filter;
+  });
   const counts={
     expired:medicines.filter(m=>getDaysToExpiry(m.expiryDate)<0).length,
     critical:medicines.filter(m=>{const d=getDaysToExpiry(m.expiryDate);return d>=0&&d<=30;}).length,

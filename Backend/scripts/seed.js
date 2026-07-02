@@ -1,8 +1,6 @@
-import dotenv from 'dotenv'
+import '../config/env.js'
 import mongoose from 'mongoose'
 import Medicine from '../models/medicine.js'
-
-dotenv.config()
 
 async function run() {
   const MONGO_URL = process.env.MONGO_URL || process.env.MONGO_URI || 'mongodb://localhost:27017/pharmacy_db'

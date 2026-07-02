@@ -11,6 +11,7 @@ const medicineSchema = new mongoose.Schema(
     price: { type: Number },
     threshold: { type: Number, default: 20 },
     unit: { type: String, default: "Tablets" },
+    ownerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     dateAdded: { type: Date, default: Date.now },
     description: { type: String },
   },

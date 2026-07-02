@@ -16,6 +16,6 @@ router.get("/", authorize("admin", "pharmacist", "viewer"), getMedicines);
 router.get("/:id", authorize("admin", "pharmacist", "viewer"), getMedicineById);
 router.post("/", authorize("admin", "pharmacist"), addMedicine);
 router.put("/:id", authorize("admin", "pharmacist"), updateMedicine);
-router.delete("/:id", authorize("admin"), deleteMedicine);
+router.delete("/:id", authorize("admin", "pharmacist"), deleteMedicine);
 
 export default router;

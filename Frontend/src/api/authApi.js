@@ -1,4 +1,4 @@
-import { apiFetch, setAccessToken } from "./client.js";
+import { apiFetch, setAccessToken, refreshAccessToken } from "./client.js";
 
 export async function getSetupStatus() {
   const json = await apiFetch("/api/auth/setup-status");
@@ -22,6 +22,22 @@ export async function verifyOtp({ email, otp }) {
   return json.data;
 }
 
+export async function requestPasswordReset({ email }) {
+  const json = await apiFetch("/api/auth/request-password-reset", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+  return json.data;
+}
+
+export async function resetPassword({ email, otp, password, confirmPassword }) {
+  const json = await apiFetch("/api/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ email, otp, password, confirmPassword }),
+  });
+  return json.data;
+}
+
 export async function login({ email, password }) {
   const json = await apiFetch("/api/auth/login", {
     method: "POST",
@@ -40,9 +56,9 @@ export async function logout() {
 }
 
 export async function refreshSession() {
-  const json = await apiFetch("/api/auth/refresh", { method: "POST" });
-  setAccessToken(json.data.accessToken);
-  return json.data;
+  const data = await refreshAccessToken();
+  if (!data) throw new Error("No session");
+  return data;
 }
 
 export async function getMe() {

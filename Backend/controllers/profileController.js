@@ -15,9 +15,17 @@ export const getProfile = async (req, res) => {
 };
 
 // ➤ UPDATE Profile
+const PROFILE_FIELDS = [
+  "pharmacyName", "ownerName", "licenseNo", "drugLicense",
+  "phone", "email", "address", "gstin", "registeredSince", "avatar",
+];
+
 export const updateProfile = async (req, res) => {
   try {
-    const payload = { ...req.body };
+    const payload = {};
+    for (const key of PROFILE_FIELDS) {
+      if (req.body[key] !== undefined) payload[key] = req.body[key];
+    }
     if (payload.pharmacyName) {
       payload.avatar = shopInitials(payload.pharmacyName);
     }

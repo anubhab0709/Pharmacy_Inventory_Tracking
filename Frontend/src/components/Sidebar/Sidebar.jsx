@@ -93,7 +93,7 @@ const Sidebar = ({
         {!isCollapsed && (
           <div className={styles.sidebarFooter}>
             <p className={styles.footerText}>
-              © 2025 PharmaCare
+              © PharmaCare
             </p>
             <p className={styles.footerVersion}>v1.0.0</p>
           </div>

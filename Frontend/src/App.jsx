@@ -6,20 +6,23 @@ import { C } from "./theme";
 import { useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Sidebar from "./components/Sidebar";
+import LoadingScreen from "./components/LoadingScreen";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Medicines from "./pages/Medicines";
 import ExpiryTracker from "./pages/ExpiryTracker";
 import StockTracker from "./pages/StockTracker";
 import StockOut from "./pages/StockOut";
+import MakeBill from "./pages/MakeBill";
 import Profile from "./pages/Profile";
 import ContactUs from "./pages/ContactUs";
-import { getMedicines, addMedicine, updateMedicine, deleteMedicine, getStockOuts, addStockOut, deleteStockOut, getProfile, updateProfile } from "./api/medicinesApi";
+import { getMedicines, addMedicine, updateMedicine, deleteMedicine, getStockOuts, addStockOut, deleteStockOut, getBills, createBill, getProfile, updateProfile } from "./api/medicinesApi";
 
 function AppLayout() {
   const { user, canWrite, isAdmin } = useAuth();
   const [medicines, setMedicines] = useState([]);
   const [stockOuts, setStockOuts] = useState([]);
+  const [bills, setBills] = useState([]);
   const [profile, setProfile] = useState({});
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -28,15 +31,17 @@ function AppLayout() {
 
   const loadData = async () => {
     try {
-      const [m, s, p] = await Promise.all([getMedicines(), getStockOuts(), getProfile()]);
+      const [m, s, b, p] = await Promise.all([getMedicines(), getStockOuts(), getBills(), getProfile()]);
       setMedicines(m);
       setStockOuts(s);
+      setBills(b);
       setProfile(p);
     } catch (err) {
       console.error("Load error:", err);
       toast.error("Failed to load data");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const addOrUpdateMedicine = async (med) => {
@@ -60,6 +65,12 @@ function AppLayout() {
     setMedicines((prev) => prev.map((m) => ((m._id || m.id) === data.medicineId ? { ...m, quantity: m.quantity - data.quantity } : m)));
   };
 
+  const addBill = async (data) => {
+    const bill = await createBill(data);
+    await loadData();
+    return bill;
+  };
+
   const deleteDispense = async (id) => {
     await deleteStockOut(id);
     setStockOuts((prev) => prev.filter((s) => s._id !== id && s.id !== id));
@@ -71,7 +82,7 @@ function AppLayout() {
   };
 
   if (loading) {
-    return <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)", color: "var(--primary)" }}>Loading Pharmacare...</div>;
+    return <LoadingScreen message="Loading Pharmacare..." />;
   }
 
   return (
@@ -107,9 +118,11 @@ function AppLayout() {
             <Routes>
               <Route path="/" element={<Dashboard medicines={medicines} stockOuts={stockOuts} navigate={navigate} />} />
               <Route path="/medicines" element={<Medicines medicines={medicines} addOrUpdateMedicine={addOrUpdateMedicine} deleteMed={deleteMed} toast={toast} canWrite={canWrite} isAdmin={isAdmin} />} />
+              <Route path="/add-medicine" element={<Medicines medicines={medicines} addOrUpdateMedicine={addOrUpdateMedicine} deleteMed={deleteMed} toast={toast} canWrite={canWrite} isAdmin={isAdmin} openAddOnLoad />} />
               <Route path="/expiry-tracker" element={<ExpiryTracker medicines={medicines} />} />
               <Route path="/stock-tracker" element={<StockTracker medicines={medicines} addOrUpdateMedicine={addOrUpdateMedicine} toast={toast} canWrite={canWrite} />} />
-              <Route path="/stock-out" element={<StockOut medicines={medicines} stockOuts={stockOuts} addDispense={addDispense} deleteDispense={deleteDispense} toast={toast} canWrite={canWrite} isAdmin={isAdmin} />} />
+              <Route path="/stock-out" element={<StockOut medicines={medicines} stockOuts={stockOuts} profile={profile} addDispense={addDispense} deleteDispense={deleteDispense} toast={toast} canWrite={canWrite} isAdmin={isAdmin} />} />
+              <Route path="/make-bill" element={<MakeBill medicines={medicines} bills={bills} profile={profile} createBill={addBill} toast={toast} canWrite={canWrite} />} />
               <Route path="/profile" element={<Profile profile={profile} updateProfileApi={handleUpdateProfile} toast={toast} />} />
               <Route path="/contact-us" element={<ContactUs />} />
             </Routes>

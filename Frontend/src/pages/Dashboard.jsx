@@ -188,7 +188,7 @@ export default function Dashboard({ medicines = [], stockOuts = [], navigate }) 
           sub="Medicines expiring within 90 days"
           items={expiringSoon}
           emptyMsg="No medicines expiring soon"
-          onViewAll={()=>goToExpiry("critical")}
+          onViewAll={()=>goToExpiry("within90")}
           renderRow={(m)=>{
             const st=getExpiryStatus(m.expiryDate);
             const days=getDaysToExpiry(m.expiryDate);

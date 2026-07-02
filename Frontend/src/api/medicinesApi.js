@@ -45,6 +45,19 @@ export async function deleteStockOut(id) {
   return json.data;
 }
 
+export async function getBills() {
+  const json = await apiFetch("/api/bills");
+  return json.data;
+}
+
+export async function createBill(data) {
+  const json = await apiFetch("/api/bills", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return json.data;
+}
+
 export async function getProfile() {
   const json = await apiFetch("/api/profile");
   return json.data;

@@ -1,4 +1,4 @@
-import dotenv from "dotenv";
+import "./config/env.js";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -9,10 +9,10 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import medicineRoutes from "./routes/medicineRoutes.js";
 import stockOutRoutes from "./routes/stockOutRoutes.js";
+import billRoutes from "./routes/billRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
+import contactRoutes from "./routes/contactRoutes.js";
 import errorHandler from "./middleware/errorHandler.js";
-
-dotenv.config();
 
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET === "change_me_in_production") {
   if (process.env.NODE_ENV === "production") {
@@ -24,7 +24,7 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET === "change_me_in_producti
 
 const app = express();
 
-const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:3000,http://localhost:3001,http://localhost:5173")
+const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001,http://localhost:5173")
   .split(",")
   .map((o) => o.trim())
   .filter(Boolean);
@@ -34,7 +34,7 @@ app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(cors({
   origin(origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error("Not allowed by CORS"));
+    callback(null, false);
   },
   credentials: true,
 }));
@@ -54,7 +54,9 @@ app.get("/health", (req, res) => res.json({ ok: true, timestamp: new Date().toIS
 app.use("/api/auth", authRoutes);
 app.use("/api/medicines", medicineRoutes);
 app.use("/api/stock-out", stockOutRoutes);
+app.use("/api/bills", billRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/contact", contactRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Route not found" });
@@ -66,7 +68,7 @@ const PORT = process.env.PORT || 4000;
 
 connectDB().then(() => {
   const server = app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT} [${process.env.NODE_ENV || "development"}]`);
+    console.log(`Server running on port ${PORT}`);
   });
 
   server.on("error", (err) => {

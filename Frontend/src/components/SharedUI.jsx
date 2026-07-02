@@ -7,6 +7,8 @@ import { C } from "../theme";
 export const Icon = ({ name, size = 16, color = "currentColor", style: sx = {} }) => {
   const s = { width: size, height: size, display: "inline-block", flexShrink: 0, ...sx };
   const icons = {
+    eye: <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={s}><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>,
+    eye_off: <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={s}><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-6 0-10-7-10-7a18.79 18.79 0 0 1 5-5.11"/><path d="M1 1l22 22"/></svg>,
     dashboard:   <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={s}><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>,
     pill:        <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={s}><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><line x1="8.5" y1="8.5" x2="15.5" y2="15.5"/></svg>,
     plus:        <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" style={s}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
@@ -47,9 +49,9 @@ export function ConfirmModal({ open, title, message, onConfirm, onCancel, confir
   if (!open) return null;
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.6)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(2px)"}}>
-      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:30,maxWidth:420,width:"90%",animation:"fadeUp 0.15s ease",boxShadow:"0 10px 25px rgba(0,0,0,0.1)"}}>
-        <p style={{fontFamily:"'Inter',sans-serif",fontSize:18,fontWeight:600,color:C.text,marginBottom:8}}>{title}</p>
-        <p style={{color:C.muted,fontSize:13,marginBottom:26,lineHeight:1.5}}>{message}</p>
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,padding:28,maxWidth:440,width:"90%",animation:"fadeUp 0.15s ease",boxShadow:"0 18px 40px rgba(0,0,0,0.12)"}}>
+        <p style={{fontFamily:"'Inter',sans-serif",fontSize:20,fontWeight:700,color:C.text,marginBottom:8}}>{title}</p>
+        <p style={{color:C.muted,fontSize:14,marginBottom:24,lineHeight:1.6}}>{message}</p>
         <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
           <Btn variant="ghost" onClick={onCancel}>Cancel</Btn>
           <Btn variant={danger?"danger":"primary"} onClick={onConfirm}>{confirmLabel}</Btn>
@@ -62,19 +64,38 @@ export function ConfirmModal({ open, title, message, onConfirm, onCancel, confir
 export function Field({ label, error, children, required }) {
   return (
     <div style={{display:"flex",flexDirection:"column",gap:4}}>
-      <label style={{fontSize:12,color:C.muted,fontWeight:500}}>{label}{required&&<span style={{color:C.red}}> *</span>}</label>
+      <label style={{fontSize:13,color:C.muted,fontWeight:600}}>{label}{required&&<span style={{color:C.red}}> *</span>}</label>
       {children}
-      {error&&<span style={{fontSize:11,color:C.red}}>{error}</span>}
+      {error&&<span style={{fontSize:12,color:C.red}}>{error}</span>}
     </div>
   );
 }
 
-export const inputSt = (focus=false) => ({ width:"100%", padding:"8px 12px", borderRadius:6, border:`1px solid ${focus?C.teal:C.border}`, background:C.surface, color:C.text, fontSize:13, fontFamily:"'Inter',sans-serif", outline:"none", transition:"border-color 0.15s, box-shadow 0.15s", boxSizing:"border-box", boxShadow:focus?`0 0 0 3px ${C.teal}20`:"none" });
-export const selectSt = { width:"100%", padding:"8px 12px", borderRadius:6, border:`1px solid ${C.border}`, background:C.surface, color:C.text, fontSize:13, fontFamily:"'Inter',sans-serif", outline:"none", cursor:"pointer" };
+export const inputSt = (focus=false) => ({ width:"100%", padding:"11px 14px", borderRadius:10, border:`1px solid ${focus?C.teal:C.border}`, background:C.surface, color:C.text, fontSize:14, fontFamily:"'Inter',sans-serif", outline:"none", transition:"border-color 0.16s, box-shadow 0.16s, background 0.16s", boxSizing:"border-box", boxShadow:focus?`0 0 0 3px ${C.teal}18`:"none" });
+export const selectSt = { width:"100%", padding:"11px 14px", borderRadius:10, border:`1px solid ${C.border}`, background:C.surface, color:C.text, fontSize:14, fontFamily:"'Inter',sans-serif", outline:"none", cursor:"pointer" };
 
 export function FInput({ label, required, error, ...props }) {
   const [f,setF]=useState(false);
-  return <Field label={label} error={error} required={required}><input style={inputSt(f)} onFocus={()=>setF(true)} onBlur={()=>setF(false)} {...props}/></Field>;
+  const [show, setShow] = useState(false);
+  const isPassword = props.type === "password";
+  if (!isPassword) {
+    return <Field label={label} error={error} required={required}><input style={inputSt(f)} onFocus={()=>setF(true)} onBlur={()=>setF(false)} {...props}/></Field>;
+  }
+  return (
+    <Field label={label} error={error} required={required}>
+      <div style={{position:'relative'}}>
+        <input
+          {...props}
+          type={show?"text":"password"}
+          style={{...inputSt(f),paddingRight:40}}
+          onFocus={()=>setF(true)} onBlur={()=>setF(false)}
+        />
+        <button type="button" onClick={()=>setShow(s=>!s)} style={{position:'absolute',right:8,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',padding:6,cursor:'pointer'}} aria-label={show?"Hide password":"Show password"}>
+          <Icon name={show?"eye_off":"eye"} size={16} color={C.muted} />
+        </button>
+      </div>
+    </Field>
+  );
 }
 export function FSelect({ label, required, error, options, ...props }) {
   return <Field label={label} error={error} required={required}><select style={selectSt} {...props}>{options.map(o=><option key={o} value={o} style={{background:C.surface}}>{o}</option>)}</select></Field>;
@@ -85,12 +106,12 @@ export function FTextarea({ label, required, error, ...props }) {
 }
 
 export function Badge({ label, color, bg }) {
-  return <span style={{display:"inline-block",padding:"2px 8px",borderRadius:4,background:bg,color,fontSize:11,fontWeight:600,border:`1px solid ${color}25`}}>{label}</span>;
+  return <span style={{display:"inline-block",padding:"3px 10px",borderRadius:999,background:bg,color,fontSize:11,fontWeight:700,border:`1px solid ${color}25`}}>{label}</span>;
 }
 
 export function Btn({ children, onClick, variant="primary", size="md", icon, disabled=false, style:sx={}, type="button" }) {
-  const base = {display:"flex",alignItems:"center",gap:6,borderRadius:6,cursor:disabled?"not-allowed":"pointer",fontFamily:"'Inter',sans-serif",fontWeight:500,opacity:disabled?0.5:1,transition:"all 0.15s",...sx};
-  const sizes = {sm:{padding:"6px 12px",fontSize:12},md:{padding:"8px 16px",fontSize:13},lg:{padding:"12px 24px",fontSize:14}};
+  const base = {display:"flex",alignItems:"center",gap:8,borderRadius:10,cursor:disabled?"not-allowed":"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600,opacity:disabled?0.5:1,transition:"transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, border-color 0.16s ease",...sx};
+  const sizes = {sm:{padding:"7px 12px",fontSize:13},md:{padding:"10px 16px",fontSize:14},lg:{padding:"13px 24px",fontSize:15}};
   
   // Clean flat styles with border based on professional B2B guidelines
   const variants = {
@@ -102,7 +123,7 @@ export function Btn({ children, onClick, variant="primary", size="md", icon, dis
   };
   const v = variants[variant];
   return (
-    <button type={type} disabled={disabled} onClick={onClick} style={{...base,...sizes[size],...v}}>
+    <button type={type} disabled={disabled} onClick={onClick} style={{...base,...sizes[size],...v}} onMouseEnter={e=>{if(!disabled){e.currentTarget.style.transform="translateY(-1px)";e.currentTarget.style.boxShadow="0 8px 18px rgba(15,23,42,0.08)";}}} onMouseLeave={e=>{if(!disabled){e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";}}}>
       {icon&&<Icon name={icon} size={14} color="currentColor"/>}
       {children}
     </button>
@@ -110,7 +131,7 @@ export function Btn({ children, onClick, variant="primary", size="md", icon, dis
 }
 
 export function Card({ children, style:sx={} }) {
-  return <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:20,boxShadow:"0 1px 3px rgba(0,0,0,0.04)",...sx}}>{children}</div>;
+  return <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,padding:22,boxShadow:"0 1px 3px rgba(0,0,0,0.04)",...sx}}>{children}</div>;
 }
 
 export function SearchBar({ value, onChange, placeholder="Search..." }) {
@@ -133,17 +154,17 @@ export function StatCard({ title, value, sub, accent, iconName, delay=0, onClick
       aria-label={ariaLabel || title}
       onClick={onClick}
       disabled={!isClickable}
-      style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"20px",display:"flex",flexDirection:"column",gap:8,position:"relative",overflow:"hidden",animation:`fadeUp 0.5s ease ${delay}s both`,boxShadow:"0 1px 2px rgba(0,0,0,0.02)",textAlign:"left",width:"100%",cursor:isClickable?"pointer":"default",outline:"none",transition:"transform 0.15s ease, box-shadow 0.15s ease",appearance:"none"}}
+      style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,padding:"20px",display:"flex",flexDirection:"column",gap:8,position:"relative",overflow:"hidden",animation:`fadeUp 0.5s ease ${delay}s both`,boxShadow:"0 1px 2px rgba(0,0,0,0.02)",textAlign:"left",width:"100%",cursor:isClickable?"pointer":"default",outline:"none",transition:"transform 0.15s ease, box-shadow 0.15s ease",appearance:"none"}}
       onMouseEnter={e=>{if(isClickable){e.currentTarget.style.transform="translateY(-1px)";e.currentTarget.style.boxShadow="0 6px 16px rgba(0,0,0,0.06)";}}}
       onMouseLeave={e=>{if(isClickable){e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="0 1px 2px rgba(0,0,0,0.02)";}}}
     >
       <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4}}>
         <p style={{color:C.muted,fontSize:12,fontWeight:500,margin:0}}>{title}</p>
-        <div style={{width:28,height:28,borderRadius:6,background:`${accent}12`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{width:28,height:28,borderRadius:6,background:accent+"12",display:"flex",alignItems:"center",justifyContent:"center"}}>
           <Icon name={iconName} size={14} color={accent}/>
         </div>
       </div>
-      <p style={{color:C.text,fontSize:24,fontWeight:600,margin:0,fontFamily:"'Inter',sans-serif",lineHeight:1}}>{value}</p>
+      <p style={{color:C.text,fontSize:26,fontWeight:700,margin:0,fontFamily:"'Inter',sans-serif",lineHeight:1}}>{value}</p>
       <p style={{color:accent,fontSize:12,margin:0}}>{sub}</p>
     </button>
   );
@@ -151,11 +172,11 @@ export function StatCard({ title, value, sub, accent, iconName, delay=0, onClick
 
 export function PageHdr({ tag, title, sub, accent=C.teal, actions }) {
   return (
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24,animation:"fadeUp 0.4s ease both"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:28,animation:"fadeUp 0.4s ease both",gap:16}}>
       <div>
-        <p style={{fontSize:12,color:accent,fontWeight:600,marginBottom:4}}>{tag}</p>
-        <h1 style={{fontFamily:"'Inter',sans-serif",fontSize:24,fontWeight:700,color:C.text,letterSpacing:"-0.01em",lineHeight:1.1,margin:0}}>{title}</h1>
-        {sub&&<p style={{color:C.muted,fontSize:13,marginTop:4}}>{sub}</p>}
+        <p style={{fontSize:12,color:accent,fontWeight:700,marginBottom:4,textTransform:"uppercase",letterSpacing:"0.12em"}}>{tag}</p>
+        <h1 style={{fontFamily:"'Inter',sans-serif",fontSize:28,fontWeight:700,color:C.text,letterSpacing:"-0.02em",lineHeight:1.1,margin:0}}>{title}</h1>
+        {sub&&<p style={{color:C.muted,fontSize:14,marginTop:6,lineHeight:1.5}}>{sub}</p>}
       </div>
       {actions&&<div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>{actions}</div>}
     </div>
@@ -165,17 +186,21 @@ export function PageHdr({ tag, title, sub, accent=C.teal, actions }) {
 export function Table({ cols, rows, emptyMsg="No data found" }) {
   return (
     <div style={{overflowX:"auto"}}>
-      <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:14}}>
         <thead>
           <tr style={{borderBottom:`1px solid ${C.border}`}}>
-            {cols.map(c=><th key={c.label} style={{padding:"10px 14px",textAlign:"left",color:C.muted,fontSize:12,fontWeight:500,whiteSpace:"nowrap"}}>{c.label}</th>)}
+            {cols.map((c, index) => {
+              const key = c.key ?? (typeof c.label === "string" ? c.label : index);
+              const header = c.header ?? c.label;
+              return <th key={key} style={{padding:"14px 16px",textAlign:"left",color:C.muted,fontSize:12,fontWeight:700,whiteSpace:"nowrap",textTransform:"uppercase",letterSpacing:"0.08em"}}>{header}</th>;
+            })}
           </tr>
         </thead>
         <tbody>
-          {rows.length===0&&<tr><td colSpan={cols.length} style={{padding:"40px 16px",textAlign:"center",color:C.dim}}>{emptyMsg}</td></tr>}
+          {rows.length===0&&<tr><td colSpan={cols.length} style={{padding:"48px 16px",textAlign:"center",color:C.dim,fontSize:14}}>{emptyMsg}</td></tr>}
           {rows.map((row,i)=>(
             <tr key={i} style={{borderBottom:`1px solid ${C.border}`,transition:"background 0.1s"}} onMouseEnter={e=>e.currentTarget.style.background=C.surfaceHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-              {cols.map(c=><td key={c.label} style={{padding:"12px 14px",color:C.text,verticalAlign:"middle"}}>{c.render?c.render(row):row[c.key]}</td>)}
+              {cols.map((c, j)=><td key={c.key ?? j} style={{padding:"14px 16px",color:C.text,verticalAlign:"middle"}}>{c.render?c.render(row):row[c.key]}</td>)}
             </tr>
           ))}
         </tbody>

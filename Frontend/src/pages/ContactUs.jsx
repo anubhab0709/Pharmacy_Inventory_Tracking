@@ -2,9 +2,11 @@ import React, { useState } from "react";
 import { C } from "../theme";
 import { PageHdr, Card, FInput, FTextarea, Btn, Icon } from "../components/SharedUI";
 import { toast } from "react-toastify";
+import { sendContactMessage } from "../api/contactApi";
+import { ApiError } from "../api/client";
 
 const FAQS = [
-  { q: "How do I add a new medicine to inventory?", a: "Go to the Medicines page and click 'Add Medicine'. Fill out the required details like name, category, and minimum threshold." },
+  { q: "How do I add a new medicine to inventory?", a: "Go to Medicines or Add Medicine in the sidebar and fill out the required details like name, category, and minimum threshold." },
   { q: "What happens when inventory goes below the threshold?", a: "The Dashboard and Stock Tracker will highlight strings of low-stock medicines in red or orange alerts, so you know exactly what needs restocked." },
   { q: "How do I switch to dark mode?", a: "Use the toggle button in the bottom left sidebar!" },
 ];
@@ -14,19 +16,22 @@ export default function ContactUs() {
   const [loading, setLoading] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if(!form.email || !form.message) {
+    if (!form.email || !form.message) {
       toast.error("Email and Message are required!");
       return;
     }
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
-      toast.success("Message sent successfully! Our team will contact you soon.");
+    try {
+      const res = await sendContactMessage(form);
+      toast.success(res.message || "Message sent successfully! Our team will contact you soon.");
       setForm({ email: "", subject: "", message: "" });
-    }, 800);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to send message");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -34,7 +39,6 @@ export default function ContactUs() {
       <PageHdr tag="Support" title="Contact Us" sub="Get in touch with the PharmaCare support team or browse our FAQs." />
 
       <div style={{display:"flex",gap:30,flexWrap:"wrap"}}>
-        {/* Contact Form */}
         <Card style={{flex:1,minWidth:320}}>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
             <Icon name="activity" size={18} color={C.teal} />
@@ -53,7 +57,6 @@ export default function ContactUs() {
           </form>
         </Card>
 
-        {/* FAQs */}
         <Card style={{flex:1,minWidth:320}}>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
             <Icon name="info" size={18} color={C.orange} />
@@ -79,7 +82,10 @@ export default function ContactUs() {
 
           <div style={{marginTop:32,padding:16,background:"rgba(var(--primary-rgb),0.05)",borderRadius:8,border:`1px solid ${C.border}`}}>
             <p style={{fontFamily:"'Inter',sans-serif",fontSize:13,fontWeight:600,color:C.text,margin:"0 0 4px"}}>Still need help?</p>
-            <p style={{color:C.muted,fontSize:12,margin:0}}>Call our 24/7 hotline toll-free at <strong style={{color:C.teal}}>1-800-PHARMA</strong> or email directly to support@pharmacare.com.</p>
+            <p style={{color:C.muted,fontSize:12,margin:0,lineHeight:1.6}}>
+              Call us at <strong style={{color:C.teal}}>+91 8617569139</strong> or email directly to{" "}
+              <a href="mailto:heyanubhab@gmail.com" style={{color:C.teal,fontWeight:600,textDecoration:"none"}}>heyanubhab@gmail.com</a>.
+            </p>
           </div>
         </Card>
       </div>

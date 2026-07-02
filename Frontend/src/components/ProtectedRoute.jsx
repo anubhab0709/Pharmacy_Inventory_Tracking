@@ -1,16 +1,13 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import LoadingScreen from "./LoadingScreen.jsx";
 
 export default function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
-    return (
-      <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)", color: "var(--primary)" }}>
-        Loading...
-      </div>
-    );
+    return <LoadingScreen message="Loading..." />;
   }
 
   if (!isAuthenticated) {

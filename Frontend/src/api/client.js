@@ -4,6 +4,13 @@ let accessToken = null;
 let onUnauthorized = null;
 let refreshPromise = null;
 
+const PUBLIC_AUTH_PATHS = new Set([
+  "/api/auth/login",
+  "/api/auth/send-otp",
+  "/api/auth/verify-otp",
+  "/api/auth/setup-status",
+]);
+
 export function setAccessToken(token) {
   accessToken = token;
 }
@@ -23,7 +30,8 @@ export class ApiError extends Error {
   }
 }
 
-async function tryRefresh() {
+/** Single shared refresh — used by apiFetch and AuthContext boot */
+export async function refreshAccessToken() {
   if (!refreshPromise) {
     refreshPromise = fetch(`${API_BASE_URL}/api/auth/refresh`, {
       method: "POST",
@@ -31,9 +39,10 @@ async function tryRefresh() {
     })
       .then(async (res) => {
         if (!res.ok) return null;
-        const json = await res.json();
-        accessToken = json.data?.accessToken || null;
-        return json.data || null;
+        const json = await res.json().catch(() => ({}));
+        const data = json.data;
+        if (data?.accessToken) accessToken = data.accessToken;
+        return data || null;
       })
       .catch(() => null)
       .finally(() => {
@@ -56,13 +65,19 @@ export async function apiFetch(path, options = {}) {
     credentials: "include",
   });
 
-  if (res.status === 401 && !options._retry && !path.startsWith("/api/auth/")) {
-    const refreshed = await tryRefresh();
+  const shouldTryRefresh =
+    res.status === 401 &&
+    !options._retry &&
+    !PUBLIC_AUTH_PATHS.has(path) &&
+    path !== "/api/auth/refresh";
+
+  if (shouldTryRefresh) {
+    const refreshed = await refreshAccessToken();
     if (refreshed?.accessToken) {
       return apiFetch(path, { ...options, _retry: true });
     }
     accessToken = null;
-    onUnauthorized?.();
+    if (path !== "/api/auth/logout") onUnauthorized?.();
     throw new ApiError("Session expired", 401);
   }
 

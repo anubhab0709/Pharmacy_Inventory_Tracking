@@ -1,21 +1,32 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { setAccessToken, setUnauthorizedHandler } from "../api/client.js";
+import { setAccessToken, setUnauthorizedHandler, refreshAccessToken } from "../api/client.js";
 import {
   login as apiLogin,
   logout as apiLogout,
   sendOtp as apiSendOtp,
   verifyOtp as apiVerifyOtp,
-  refreshSession,
   getMe,
 } from "../api/authApi.js";
 
 const AuthContext = createContext(null);
 
+let bootPromise = null;
+
+function bootstrapSession() {
+  if (!bootPromise) {
+    bootPromise = refreshAccessToken().finally(() => {
+      bootPromise = null;
+    });
+  }
+  return bootPromise;
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const mountedRef = useRef(true);
 
   const clearSession = useCallback(() => {
     setAccessToken(null);
@@ -23,9 +34,14 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
     setUnauthorizedHandler(() => {
       clearSession();
-      navigate("/login", { replace: true });
+      navigate("/login", { replace: true, state: { sessionExpired: true } });
     });
     return () => setUnauthorizedHandler(null);
   }, [clearSession, navigate]);
@@ -33,12 +49,12 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     (async () => {
       try {
-        const data = await refreshSession();
-        setUser(data.user);
+        const data = await bootstrapSession();
+        if (mountedRef.current && data?.user) setUser(data.user);
       } catch {
-        clearSession();
+        if (mountedRef.current) clearSession();
       } finally {
-        setLoading(false);
+        if (mountedRef.current) setLoading(false);
       }
     })();
   }, [clearSession]);
@@ -58,9 +74,12 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    await apiLogout();
-    clearSession();
-    navigate("/login", { replace: true });
+    try {
+      await apiLogout();
+    } finally {
+      clearSession();
+      navigate("/login", { replace: true });
+    }
   };
 
   const refreshUser = async () => {

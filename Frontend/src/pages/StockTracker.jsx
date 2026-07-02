@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { C } from "../theme";
 import { getStockStatus, getDaysToExpiry, fmtDate, fmtCurrency } from "../utils";
@@ -78,23 +79,36 @@ export default function StockTracker({ medicines = [], addOrUpdateMedicine, toas
         />
       </Card>
       {restockMed&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:1500,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>
-          <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:20,padding:28,width:360,animation:"fadeUp 0.2s ease",boxShadow:"0 10px 40px rgba(0,0,0,0.1)"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-              <p style={{fontFamily:"'Inter',sans-serif",fontSize:18,fontWeight:700,color:C.text,margin:0}}>Restock Medicine</p>
-              <button onClick={()=>setRestockMed(null)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",padding:4}}><Icon name="close" size={15} color={C.muted}/></button>
+        createPortal(
+          <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.55)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(4px)"}}>
+            <div role="dialog" aria-modal="true" aria-labelledby="restock-modal-title" style={{width:"100%",maxWidth:720,maxHeight:"90vh",overflow:"hidden",borderRadius:20,border:`1px solid ${C.border}`,background:C.surface,boxShadow:"0 24px 60px rgba(15,23,42,0.18)",display:"flex",flexDirection:"column",animation:"fadeUp 0.2s ease"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,borderBottom:`1px solid ${C.border}`,padding:"20px 24px",flexShrink:0}}>
+                <div>
+                  <p style={{margin:0,fontSize:11,textTransform:"uppercase",letterSpacing:"0.12em",fontWeight:700,color:C.teal}}>Inventory</p>
+                  <h2 id="restock-modal-title" style={{margin:"4px 0 0",fontFamily:"'Inter',sans-serif",fontSize:22,fontWeight:700,color:C.text}}>Restock Medicine</h2>
+                </div>
+                <button onClick={()=>setRestockMed(null)} aria-label="Close modal" style={{width:36,height:36,borderRadius:10,border:`1px solid ${C.border}`,background:C.surfaceHover,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><Icon name="close" size={16} color={C.muted}/></button>
+              </div>
+
+              <div style={{overflowY:"auto",padding:"20px 24px",flex:1}}>
+                <div style={{background:"rgba(0,184,141,0.05)",border:`1px solid rgba(0,184,141,0.12)`,borderRadius:14,padding:"14px 16px",marginBottom:18}}>
+                  <p style={{margin:0,color:C.text,fontSize:14,fontWeight:700}}>{restockMed.name}</p>
+                  <p style={{margin:"4px 0 0",color:C.muted,fontSize:13}}>Current stock: <strong style={{color:C.teal}}>{restockMed.quantity} {restockMed.unit||"Tablets"}</strong></p>
+                </div>
+                <Field label="Quantity to Add" required>
+                  <input type="number" min="1" value={restockQty} onChange={e=>setRestockQty(e.target.value)} placeholder="Enter quantity..." style={inputSt(focusRQ)} onFocus={()=>setFocusRQ(true)} onBlur={()=>setFocusRQ(false)}/>
+                </Field>
+                {restockQty&&<p style={{color:C.muted,fontSize:13,marginTop:10}}>New total: <strong style={{color:C.teal}}>{restockMed.quantity+Number(restockQty||0)} {restockMed.unit||"Tablets"}</strong></p>}
+              </div>
+
+              <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:10,borderTop:`1px solid ${C.border}`,padding:"16px 24px",flexShrink:0}}>
+                <Btn variant="ghost" onClick={()=>setRestockMed(null)}>Cancel</Btn>
+                <Btn variant="primary" onClick={handleRestock}>Confirm Restock</Btn>
+              </div>
             </div>
-            <p style={{color:C.muted,fontSize:13,marginBottom:18}}>{restockMed.name} · Current: <strong style={{color:C.teal}}>{restockMed.quantity} {restockMed.unit||"Tablets"}</strong></p>
-            <Field label="Quantity to Add" required>
-              <input type="number" min="1" value={restockQty} onChange={e=>setRestockQty(e.target.value)} placeholder="Enter quantity..." style={inputSt(focusRQ)} onFocus={()=>setFocusRQ(true)} onBlur={()=>setFocusRQ(false)}/>
-            </Field>
-            {restockQty&&<p style={{color:C.muted,fontSize:12,marginTop:8}}>New total: <strong style={{color:C.teal}}>{restockMed.quantity+Number(restockQty||0)} {restockMed.unit||"Tablets"}</strong></p>}
-            <div style={{display:"flex",gap:10,marginTop:20,justifyContent:"flex-end"}}>
-              <Btn variant="ghost" onClick={()=>setRestockMed(null)}>Cancel</Btn>
-              <Btn variant="primary" onClick={handleRestock}>Confirm Restock</Btn>
-            </div>
-          </div>
-        </div>
+          </div>,
+          document.body
+        )
       )}
     </div>
   );
