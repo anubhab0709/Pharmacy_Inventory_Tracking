@@ -5,7 +5,11 @@ import { Btn, FInput } from "../components/SharedUI";
 import BrandLogo from "../components/BrandLogo";
 import LoadingScreen from "../components/LoadingScreen";
 import { useAuth } from "../context/AuthContext";
-import { getSetupStatus, requestPasswordReset, resetPassword } from "../api/authApi";
+import {
+  getSetupStatus,
+  requestPasswordReset,
+  resetPassword,
+} from "../api/authApi";
 import { ApiError } from "../api/client";
 
 const pageStyle = {
@@ -14,7 +18,8 @@ const pageStyle = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  background: "radial-gradient(circle at top left, rgba(37,99,235,0.08), transparent 32%), radial-gradient(circle at bottom right, rgba(16,185,129,0.08), transparent 28%), var(--bg)",
+  background:
+    "radial-gradient(circle at top left, rgba(37,99,235,0.08), transparent 32%), radial-gradient(circle at bottom right, rgba(16,185,129,0.08), transparent 28%), var(--bg)",
   padding: 28,
   position: "relative",
   overflow: "hidden",
@@ -98,7 +103,13 @@ const emptySignupForm = {
 };
 
 export default function Login() {
-  const { login, sendOtp, verifyOtp, isAuthenticated, loading: authLoading } = useAuth();
+  const {
+    login,
+    sendOtp,
+    verifyOtp,
+    isAuthenticated,
+    loading: authLoading,
+  } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from
@@ -117,7 +128,9 @@ export default function Login() {
   const [info, setInfo] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const isSignup = mode === "signup" || needsSetup;
+  const canSignup = allowPublicSignup || needsSetup;
+
+  const isSignup = mode === "signup" && canSignup;
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
@@ -129,24 +142,46 @@ export default function Login() {
     getSetupStatus()
       .then((data) => {
         setNeedsSetup(data.needsSetup);
+
         setAllowPublicSignup(data.allowPublicSignup !== false);
-        if (data.needsSetup) setMode("signup");
-        else if (!data.allowPublicSignup) setMode("signin");
+
+        if (data.needsSetup) {
+          setMode("signup");
+        } else {
+          setMode("signin");
+        }
       })
+
       .catch(() => setError("Cannot reach server. Is the backend running?"))
+
       .finally(() => setCheckingSetup(false));
   }, []);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const switchMode = (next) => {
+    if (next === "signup" && !allowPublicSignup && !needsSetup) {
+      return; // 🚫 block signup completely
+    }
+
     setMode(next);
+
     setSignupStep("details");
+
     setOtp("");
+
     setError("");
+
     setInfo("");
+
     if (next === "signin") setForm(emptySignupForm);
   };
+
+  useEffect(() => {
+    if (!allowPublicSignup && !needsSetup && mode === "signup") {
+      setMode("signin");
+    }
+  }, [allowPublicSignup, needsSetup, mode]);
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
@@ -159,7 +194,7 @@ export default function Login() {
       setInfo(
         data.emailSent
           ? `OTP sent to ${form.email}. Check your inbox (expires in 10 minutes).`
-          : "OTP generated. Check your backend console for the code (dev mode — add RESEND_API_KEY to send real emails)."
+          : "OTP generated. Check your backend console for the code (dev mode — add RESEND_API_KEY to send real emails).",
       );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to send OTP");
@@ -202,10 +237,12 @@ export default function Login() {
     setSubmitting(true);
     try {
       await requestPasswordReset({ email: form.email });
-      setForgotStep('verify');
-      setInfo('If this email exists, a reset code was sent.');
+      setForgotStep("verify");
+      setInfo("If this email exists, a reset code was sent.");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to request reset');
+      setError(
+        err instanceof ApiError ? err.message : "Failed to request reset",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -222,13 +259,13 @@ export default function Login() {
         password: form.password,
         confirmPassword: form.confirmPassword,
       });
-      setInfo('Password reset. Please sign in with your new password.');
-      setMode('signin');
-      setForgotStep('request');
+      setInfo("Password reset. Please sign in with your new password.");
+      setMode("signin");
+      setForgotStep("request");
       setForm(emptySignupForm);
-      setOtp('');
+      setOtp("");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Reset failed');
+      setError(err instanceof ApiError ? err.message : "Reset failed");
     } finally {
       setSubmitting(false);
     }
@@ -245,72 +282,189 @@ export default function Login() {
 
       <div style={cardStyle}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginBottom: 14,
+            }}
+          >
             <BrandLogo size={52} showText={false} />
           </div>
-          <h1 style={{ fontFamily: "'Inter',sans-serif", fontSize: 30, fontWeight: 800, color: C.text, margin: "0 0 8px", letterSpacing: "-0.02em" }}>
+          <h1
+            style={{
+              fontFamily: "'Inter',sans-serif",
+              fontSize: 30,
+              fontWeight: 800,
+              color: C.text,
+              margin: "0 0 8px",
+              letterSpacing: "-0.02em",
+            }}
+          >
             PharmaCare
           </h1>
-          <p style={{ color: C.muted, fontSize: 15, margin: 0, lineHeight: 1.5 }}>
+          <p
+            style={{ color: C.muted, fontSize: 15, margin: 0, lineHeight: 1.5 }}
+          >
             {needsSetup
               ? "Register your pharmacy"
               : isSignup
-                ? signupStep === "otp" ? "Verify your email address" : "Create your pharmacy account"
+                ? signupStep === "otp"
+                  ? "Verify your email address"
+                  : "Create your pharmacy account"
                 : "Welcome back — sign in to your Inventory Management System"}
           </p>
         </div>
 
         {!needsSetup && allowPublicSignup && (
           <div style={toggleWrap}>
-            <div style={{ position: "absolute", inset: 4, width: "calc(50% - 4px)", borderRadius: 12, background: C.surface, boxShadow: "0 8px 18px rgba(15,23,42,0.08)", transform: mode === "signup" ? "translateX(calc(100% + 4px))" : "translateX(0)", transition: "transform 220ms ease" }} />
-            <button type="button" style={toggleBtn(mode === "signin")} onClick={() => switchMode("signin")}>
+            <div
+              style={{
+                position: "absolute",
+                inset: 4,
+                width: "calc(50% - 4px)",
+                borderRadius: 12,
+                background: C.surface,
+                boxShadow: "0 8px 18px rgba(15,23,42,0.08)",
+                transform:
+                  mode === "signup"
+                    ? "translateX(calc(100% + 4px))"
+                    : "translateX(0)",
+                transition: "transform 220ms ease",
+              }}
+            />
+            <button
+              type="button"
+              style={toggleBtn(mode === "signin")}
+              onClick={() => switchMode("signin")}
+            >
               Sign In
             </button>
-            <button type="button" style={toggleBtn(mode === "signup")} onClick={() => switchMode("signup")}>
+            <button
+              type="button"
+              style={toggleBtn(mode === "signup")}
+              onClick={() => switchMode("signup")}
+            >
               Sign Up
             </button>
           </div>
         )}
 
         {location.state?.sessionExpired && (
-          <div style={{
-            background: "rgba(245,130,32,0.08)", border: "1px solid rgba(245,130,32,0.2)",
-            borderRadius: 10, padding: "10px 14px", marginBottom: 16,
-            fontSize: 14, color: C.muted, textAlign: "center", lineHeight: 1.5,
-          }}>
+          <div
+            style={{
+              background: "rgba(245,130,32,0.08)",
+              border: "1px solid rgba(245,130,32,0.2)",
+              borderRadius: 10,
+              padding: "10px 14px",
+              marginBottom: 16,
+              fontSize: 14,
+              color: C.muted,
+              textAlign: "center",
+              lineHeight: 1.5,
+            }}
+          >
             Your session expired. Please sign in again.
           </div>
         )}
 
         {needsSetup && (
-          <div style={{
-            background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.15)",
-            borderRadius: 10, padding: "12px 16px", marginBottom: 20,
-            fontSize: 14, color: C.muted, lineHeight: 1.6, textAlign: "center",
-          }}>
+          <div
+            style={{
+              background: "rgba(37,99,235,0.06)",
+              border: "1px solid rgba(37,99,235,0.15)",
+              borderRadius: 10,
+              padding: "12px 16px",
+              marginBottom: 20,
+              fontSize: 14,
+              color: C.muted,
+              lineHeight: 1.6,
+              textAlign: "center",
+            }}
+          >
             Register your pharmacy with shop details and verify via email OTP.
           </div>
         )}
 
-        {isSignup && signupStep === "details" && (
-          <form onSubmit={handleSendOtp} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            <FInput label="Shop / Pharmacy Name" required value={form.shopName} onChange={(e) => set("shopName", e.target.value)} placeholder="e.g. City Care Pharmacy" />
-            <FInput label="Owner Name" required value={form.ownerName} onChange={(e) => set("ownerName", e.target.value)} placeholder="e.g. Dr. Rajesh Kumar" />
-            <FInput label="Email" required type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="pharmacy@email.com" autoComplete="email" />
-            <FInput label="Phone Number" required type="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+91 98765 43210" autoComplete="tel" />
-            <FInput label="Password" required type="password" value={form.password} onChange={(e) => set("password", e.target.value)} placeholder="Min. 8 characters" autoComplete="new-password" />
+        {mode === "signup" && canSignup && signupStep === "details" && (
+          <form
+            onSubmit={handleSendOtp}
+            style={{ display: "flex", flexDirection: "column", gap: 18 }}
+          >
+            <FInput
+              label="Shop / Pharmacy Name"
+              required
+              value={form.shopName}
+              onChange={(e) => set("shopName", e.target.value)}
+              placeholder="e.g. City Care Pharmacy"
+            />
+            <FInput
+              label="Owner Name"
+              required
+              value={form.ownerName}
+              onChange={(e) => set("ownerName", e.target.value)}
+              placeholder="e.g. Dr. Rajesh Kumar"
+            />
+            <FInput
+              label="Email"
+              required
+              type="email"
+              value={form.email}
+              onChange={(e) => set("email", e.target.value)}
+              placeholder="pharmacy@email.com"
+              autoComplete="email"
+            />
+            <FInput
+              label="Phone Number"
+              required
+              type="tel"
+              value={form.phone}
+              onChange={(e) => set("phone", e.target.value)}
+              placeholder="+91 98765 43210"
+              autoComplete="tel"
+            />
+            <FInput
+              label="Password"
+              required
+              type="password"
+              value={form.password}
+              onChange={(e) => set("password", e.target.value)}
+              placeholder="Min. 8 characters"
+              autoComplete="new-password"
+            />
 
             {error && <ErrorBox message={error} />}
-            <Btn variant="primary" type="submit" style={{ width: "100%", justifyContent: "center", padding: "13px 20px" }} disabled={submitting}>
+            <Btn
+              variant="primary"
+              type="submit"
+              style={{
+                width: "100%",
+                justifyContent: "center",
+                padding: "13px 20px",
+              }}
+              disabled={submitting}
+            >
               {submitting ? "Sending OTP..." : "Send OTP"}
             </Btn>
           </form>
         )}
 
-        {isSignup && signupStep === "otp" && (
-          <form onSubmit={handleVerifyOtp} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <p style={{ fontSize: 14, color: C.muted, margin: 0, textAlign: "center", lineHeight: 1.6 }}>
-              Enter the 6-digit code sent to <strong style={{ color: C.text }}>{form.email}</strong>
+        {mode === "signup" && signupStep === "otp" && (
+          <form
+            onSubmit={handleVerifyOtp}
+            style={{ display: "flex", flexDirection: "column", gap: 16 }}
+          >
+            <p
+              style={{
+                fontSize: 14,
+                color: C.muted,
+                margin: 0,
+                textAlign: "center",
+                lineHeight: 1.6,
+              }}
+            >
+              Enter the 6-digit code sent to{" "}
+              <strong style={{ color: C.text }}>{form.email}</strong>
             </p>
             <input
               type="text"
@@ -318,20 +472,48 @@ export default function Login() {
               pattern="\d{6}"
               maxLength={6}
               value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onChange={(e) =>
+                setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+              }
               placeholder="000000"
               style={otpInputStyle}
               autoFocus
             />
             {info && <InfoBox message={info} />}
             {error && <ErrorBox message={error} />}
-            <Btn variant="primary" type="submit" style={{ width: "100%", justifyContent: "center", padding: "13px 20px" }} disabled={submitting || otp.length !== 6}>
-              {submitting ? "Verifying..." : needsSetup ? "Create Pharmacy Account" : "Verify & Sign Up"}
+            <Btn
+              variant="primary"
+              type="submit"
+              style={{
+                width: "100%",
+                justifyContent: "center",
+                padding: "13px 20px",
+              }}
+              disabled={submitting || otp.length !== 6}
+            >
+              {submitting
+                ? "Verifying..."
+                : needsSetup
+                  ? "Create Pharmacy Account"
+                  : "Verify & Sign Up"}
             </Btn>
             <button
               type="button"
-              onClick={() => { setSignupStep("details"); setOtp(""); setError(""); setInfo(""); }}
-              style={{ background: "none", border: "none", color: C.teal, fontWeight: 600, cursor: "pointer", fontSize: 13, fontFamily: "'Inter',sans-serif" }}
+              onClick={() => {
+                setSignupStep("details");
+                setOtp("");
+                setError("");
+                setInfo("");
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                color: C.teal,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontSize: 13,
+                fontFamily: "'Inter',sans-serif",
+              }}
             >
               ← Edit details
             </button>
@@ -339,7 +521,14 @@ export default function Login() {
               type="button"
               onClick={handleSendOtp}
               disabled={submitting}
-              style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 12, fontFamily: "'Inter',sans-serif" }}
+              style={{
+                background: "none",
+                border: "none",
+                color: C.muted,
+                cursor: "pointer",
+                fontSize: 12,
+                fontFamily: "'Inter',sans-serif",
+              }}
             >
               Resend OTP
             </button>
@@ -347,45 +536,179 @@ export default function Login() {
         )}
 
         {mode === "signin" && (
-          <form onSubmit={handleSignIn} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            <FInput label="Email" required type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="pharmacy@email.com" autoComplete="email" />
-            <FInput label="Password" required type="password" value={form.password} onChange={(e) => set("password", e.target.value)} placeholder="Your password" autoComplete="current-password" />
+          <form
+            onSubmit={handleSignIn}
+            style={{ display: "flex", flexDirection: "column", gap: 18 }}
+          >
+            <FInput
+              label="Email"
+              required
+              type="email"
+              value={form.email}
+              onChange={(e) => set("email", e.target.value)}
+              placeholder="pharmacy@email.com"
+              autoComplete="email"
+            />
+            <FInput
+              label="Password"
+              required
+              type="password"
+              value={form.password}
+              onChange={(e) => set("password", e.target.value)}
+              placeholder="Your password"
+              autoComplete="current-password"
+            />
             {error && <ErrorBox message={error} />}
-            <Btn variant="primary" type="submit" style={{ width: "100%", justifyContent: "center", padding: "13px 20px" }} disabled={submitting}>
+            <Btn
+              variant="primary"
+              type="submit"
+              style={{
+                width: "100%",
+                justifyContent: "center",
+                padding: "13px 20px",
+              }}
+              disabled={submitting}
+            >
               {submitting ? "Signing in..." : "Sign In"}
             </Btn>
-            <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
-              <button type="button" onClick={() => { setMode('forgot'); setForgotStep('request'); setError(''); setInfo(''); }} style={{ background: 'none', border: 'none', color: C.teal, cursor: 'pointer', fontSize: 13, fontFamily: "'Inter',sans-serif", fontWeight: 600 }}>Forgot password?</button>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginTop: 8,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("forgot");
+                  setForgotStep("request");
+                  setError("");
+                  setInfo("");
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: C.teal,
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontFamily: "'Inter',sans-serif",
+                  fontWeight: 600,
+                }}
+              >
+                Forgot password?
+              </button>
             </div>
           </form>
         )}
 
-        {mode === 'forgot' && (
-          forgotStep === 'request' ? (
-            <form onSubmit={handleRequestReset} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <FInput label="Email" required type="email" value={form.email} onChange={(e)=>set('email',e.target.value)} placeholder="Enter your account email" />
+        {mode === "forgot" &&
+          (forgotStep === "request" ? (
+            <form
+              onSubmit={handleRequestReset}
+              style={{ display: "flex", flexDirection: "column", gap: 16 }}
+            >
+              <FInput
+                label="Email"
+                required
+                type="email"
+                value={form.email}
+                onChange={(e) => set("email", e.target.value)}
+                placeholder="Enter your account email"
+              />
               {info && <InfoBox message={info} />}
               {error && <ErrorBox message={error} />}
-              <Btn variant="primary" type="submit" disabled={submitting}>{submitting? 'Sending...' : 'Send reset code'}</Btn>
-              <button type="button" onClick={()=>setMode('signin')} style={{background:'none',border:'none',color:C.muted,cursor:'pointer',fontSize:13}}>← Back to sign in</button>
+              <Btn variant="primary" type="submit" disabled={submitting}>
+                {submitting ? "Sending..." : "Send reset code"}
+              </Btn>
+              <button
+                type="button"
+                onClick={() => setMode("signin")}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: C.muted,
+                  cursor: "pointer",
+                  fontSize: 13,
+                }}
+              >
+                ← Back to sign in
+              </button>
             </form>
           ) : (
-            <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <p style={{fontSize:13,color:C.muted}}>Enter the code sent to <strong style={{color:C.text}}>{form.email}</strong> and choose a new password.</p>
-              <input type="text" inputMode="numeric" pattern="\d{6}" maxLength={6} value={otp} onChange={(e)=>setOtp(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="000000" style={otpInputStyle} />
-              <FInput label="New password" required type="password" value={form.password} onChange={(e)=>set('password',e.target.value)} placeholder="New password" />
-              <FInput label="Confirm password" required type="password" value={form.confirmPassword || ''} onChange={(e)=>set('confirmPassword',e.target.value)} placeholder="Confirm new password" />
+            <form
+              onSubmit={handleResetPassword}
+              style={{ display: "flex", flexDirection: "column", gap: 16 }}
+            >
+              <p style={{ fontSize: 13, color: C.muted }}>
+                Enter the code sent to{" "}
+                <strong style={{ color: C.text }}>{form.email}</strong> and
+                choose a new password.
+              </p>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="\d{6}"
+                maxLength={6}
+                value={otp}
+                onChange={(e) =>
+                  setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                }
+                placeholder="000000"
+                style={otpInputStyle}
+              />
+              <FInput
+                label="New password"
+                required
+                type="password"
+                value={form.password}
+                onChange={(e) => set("password", e.target.value)}
+                placeholder="New password"
+              />
+              <FInput
+                label="Confirm password"
+                required
+                type="password"
+                value={form.confirmPassword || ""}
+                onChange={(e) => set("confirmPassword", e.target.value)}
+                placeholder="Confirm new password"
+              />
               {info && <InfoBox message={info} />}
               {error && <ErrorBox message={error} />}
-              <Btn variant="primary" type="submit" disabled={submitting || otp.length!==6}>{submitting? 'Resetting...' : 'Reset password'}</Btn>
+              <Btn
+                variant="primary"
+                type="submit"
+                disabled={submitting || otp.length !== 6}
+              >
+                {submitting ? "Resetting..." : "Reset password"}
+              </Btn>
             </form>
-          )
-        )}
+          ))}
 
         {!needsSetup && allowPublicSignup && signupStep === "details" && (
-          <p style={{ textAlign: "center", marginTop: 22, fontSize: 13, color: C.muted }}>
+          <p
+            style={{
+              textAlign: "center",
+              marginTop: 22,
+              fontSize: 13,
+              color: C.muted,
+            }}
+          >
             {isSignup ? "Already registered?" : "New pharmacy?"}{" "}
-            <button type="button" onClick={() => switchMode(isSignup ? "signin" : "signup")} style={{ background: "none", border: "none", color: C.teal, fontWeight: 600, cursor: "pointer", fontSize: 13, fontFamily: "'Inter',sans-serif", padding: 0 }}>
+            <button
+              type="button"
+              onClick={() => switchMode(isSignup ? "signin" : "signup")}
+              style={{
+                background: "none",
+                border: "none",
+                color: C.teal,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontSize: 13,
+                fontFamily: "'Inter',sans-serif",
+                padding: 0,
+              }}
+            >
               {isSignup ? "Sign In" : "Sign Up"}
             </button>
           </p>
@@ -397,7 +720,17 @@ export default function Login() {
 
 function ErrorBox({ message }) {
   return (
-    <p style={{ color: C.red, fontSize: 13, margin: 0, padding: "10px 14px", background: "rgba(239,68,68,0.08)", borderRadius: 8, border: "1px solid rgba(239,68,68,0.15)" }}>
+    <p
+      style={{
+        color: C.red,
+        fontSize: 13,
+        margin: 0,
+        padding: "10px 14px",
+        background: "rgba(239,68,68,0.08)",
+        borderRadius: 8,
+        border: "1px solid rgba(239,68,68,0.15)",
+      }}
+    >
       {message}
     </p>
   );
@@ -405,7 +738,18 @@ function ErrorBox({ message }) {
 
 function InfoBox({ message }) {
   return (
-    <p style={{ color: C.teal, fontSize: 12, margin: 0, padding: "10px 14px", background: "rgba(37,99,235,0.06)", borderRadius: 8, border: "1px solid rgba(37,99,235,0.12)", lineHeight: 1.5 }}>
+    <p
+      style={{
+        color: C.teal,
+        fontSize: 12,
+        margin: 0,
+        padding: "10px 14px",
+        background: "rgba(37,99,235,0.06)",
+        borderRadius: 8,
+        border: "1px solid rgba(37,99,235,0.12)",
+        lineHeight: 1.5,
+      }}
+    >
       {message}
     </p>
   );
