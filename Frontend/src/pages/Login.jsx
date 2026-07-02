@@ -147,6 +147,8 @@ export default function Login() {
 
         setAllowPublicSignup(data.allowPublicSignup !== false);
 
+        // Default the initial mode, but don't force it —
+        // the toggle should still let the user switch afterwards.
         if (data.needsSetup) {
           setMode("signup");
         } else {
@@ -162,8 +164,8 @@ export default function Login() {
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const switchMode = (next) => {
-    if (next === "signup" && !allowPublicSignup && !needsSetup) {
-      return; // 🚫 block signup completely
+    if (next === "signup" && !canSignup) {
+      return; // 🚫 block signup completely when it's not allowed and setup isn't needed
     }
 
     setMode(next);
@@ -179,11 +181,13 @@ export default function Login() {
     if (next === "signin") setForm(emptySignupForm);
   };
 
+  // Only force back to signin if signup truly isn't allowed at all
+  // (i.e. neither public signup nor initial setup applies).
   useEffect(() => {
-    if (!allowPublicSignup && !needsSetup && mode === "signup") {
+    if (!canSignup && mode === "signup") {
       setMode("signin");
     }
-  }, [allowPublicSignup, needsSetup, mode]);
+  }, [canSignup, mode]);
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
@@ -308,7 +312,7 @@ export default function Login() {
           <p
             style={{ color: C.muted, fontSize: 15, margin: 0, lineHeight: 1.5 }}
           >
-            {needsSetup
+            {needsSetup && mode === "signup"
               ? "Register your pharmacy"
               : isSignup
                 ? signupStep === "otp"
@@ -318,7 +322,9 @@ export default function Login() {
           </p>
         </div>
 
-        {!needsSetup && allowPublicSignup && (
+        {/* Toggle now depends only on whether signup is allowed at all,
+            not on needsSetup — so it always shows when canSignup is true. */}
+        {canSignup && (
           <div style={toggleWrap}>
             <div
               style={{
@@ -370,7 +376,7 @@ export default function Login() {
           </div>
         )}
 
-        {needsSetup && (
+        {needsSetup && mode === "signup" && (
           <div
             style={{
               background: "rgba(37,99,235,0.06)",
@@ -687,7 +693,8 @@ export default function Login() {
             </form>
           ))}
 
-        {!needsSetup && allowPublicSignup && signupStep === "details" && (
+        {/* Bottom toggle link now only depends on canSignup, not needsSetup */}
+        {canSignup && signupStep === "details" && mode !== "forgot" && (
           <p
             style={{
               textAlign: "center",
