@@ -55,6 +55,25 @@ export async function deleteStockOut(id) {
   return json.data;
 }
 
+// ── Disposal (Expired Medicines) ──────────────────────────────
+export async function getDisposals() {
+  const json = await apiFetch("/api/disposals");
+  return json.data;
+}
+
+export async function addDisposal(data) {
+  const json = await apiFetch("/api/disposals", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return json.data;
+}
+
+export async function deleteDisposal(id) {
+  const json = await apiFetch(`/api/disposals/${id}`, { method: "DELETE" });
+  return json.data;
+}
+
 export async function getBills() {
   const json = await apiFetch("/api/bills");
   return json.data;

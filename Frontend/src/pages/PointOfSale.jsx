@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { C } from "../theme";
-import { fmtCurrency } from "../utils";
+import { fmtCurrency, getDaysToExpiry } from "../utils";
 import { Btn, Icon, PageHdr, inputSt } from "../components/SharedUI";
 
 const makeId = () => (globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -8,8 +8,10 @@ const makeId = () => (globalThis.crypto?.randomUUID ? globalThis.crypto.randomUU
 export default function PointOfSale({ medicines = [], createBill, profile = {}, toast }) {
   const [cart, setCart] = useState([]);
   const [barcodeInput, setBarcodeInput] = useState("");
+  const [medicineSearch, setMedicineSearch] = useState("");
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [discount, setDiscount] = useState(0);
+  const [customerName, setCustomerName] = useState("");
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [receiptBill, setReceiptBill] = useState(null);
 
@@ -18,7 +20,16 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
   const streamRef = useRef(null);
 
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0), [cart]);
-  const grandTotal = Math.max(0, subtotal - discount);
+  const grandTotal = Math.max(0, subtotal - (subtotal * discount / 100));
+
+  // Filter medicines for quick-add grid
+  const filteredMedicines = useMemo(() => {
+    const q = medicineSearch.toLowerCase();
+    return medicines
+      .filter(m => m.quantity > 0)
+      .filter(m => !q || m.name.toLowerCase().includes(q) || (m.category || "").toLowerCase().includes(q))
+      .slice(0, 24);
+  }, [medicines, medicineSearch]);
 
   // Auto-focus scanner input
   useEffect(() => {
@@ -41,13 +52,22 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
         toast.error(`${medicine.name} is out of stock`);
         return prev;
       }
+      const daysToExp = getDaysToExpiry(medicine.expiryDate);
+      if (daysToExp < 0) {
+        toast.error(`${medicine.name} is expired and cannot be sold`);
+        return prev;
+      }
+      if (daysToExp <= 30) {
+        toast(`${medicine.name} expires in ${daysToExp} days`, "warning");
+      }
       return [{
         id: makeId(),
         medicineId: medicine.id || medicine._id,
         medicineName: medicine.name,
         quantity: 1,
         unitPrice: Number(medicine.price || 0),
-        maxQuantity: medicine.quantity
+        maxQuantity: medicine.quantity,
+        expiryDate: medicine.expiryDate,
       }, ...prev];
     });
   };
@@ -56,10 +76,7 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
     e.preventDefault();
     if (!barcodeInput.trim()) return;
     const code = barcodeInput.trim();
-    
-    // Fuzzy search by barcode or name
     const match = medicines.find(m => m.barcode === code || m.name.toLowerCase() === code.toLowerCase());
-    
     if (match) {
       addToCart(match);
       setBarcodeInput("");
@@ -71,7 +88,7 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
 
   const startCamera = async () => {
     if (!('BarcodeDetector' in window)) {
-      toast.error("Camera scanning is not supported in this browser. Please use a barcode scanner or type manually.");
+      toast.error("Camera scanning is not supported in this browser.");
       return;
     }
     try {
@@ -97,8 +114,6 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
 
   const scanFrame = async () => {
     if (!videoRef.current || !streamRef.current) return;
-    
-    // Using native BarcodeDetector API (Chrome/Edge/Android)
     try {
       const barcodeDetector = new window.BarcodeDetector({ formats: ['qr_code', 'ean_13', 'code_128', 'upc_a'] });
       const barcodes = await barcodeDetector.detect(videoRef.current);
@@ -106,11 +121,8 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
         const code = barcodes[0].rawValue;
         stopCamera();
         const match = medicines.find(m => m.barcode === code);
-        if (match) {
-          addToCart(match);
-        } else {
-          toast.error("Unrecognized barcode: " + code);
-        }
+        if (match) addToCart(match);
+        else toast.error("Unrecognized barcode: " + code);
       } else {
         if (isCameraActive) requestAnimationFrame(scanFrame);
       }
@@ -124,8 +136,8 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
     setIsCheckingOut(true);
     try {
       const payload = {
-        customerName: "POS Walk-in",
-        notes: discount > 0 ? `Discount applied: ${fmtCurrency(discount)}` : "POS Checkout",
+        customerName: customerName || "Walk-in Customer",
+        notes: discount > 0 ? `Discount applied: ${discount}%` : "POS Checkout",
         pharmacyName: profile.pharmacyName || "",
         pharmacyAddress: profile.address || "",
         pharmacyPhone: profile.phone || "",
@@ -137,11 +149,11 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
         })),
         grandTotal
       };
-      
       const bill = await createBill(payload);
       setReceiptBill(bill);
       setCart([]);
       setDiscount(0);
+      setCustomerName("");
       toast.success("Checkout successful");
     } catch (err) {
       toast.error(err.message || "Checkout failed");
@@ -152,178 +164,179 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
 
   const printReceipt = (bill) => {
     if (!bill) return;
-    const win = window.open("", "_blank", "width=400,height=600");
-    if (!win) {
-      toast.error("Pop-up blocked. Allow pop-ups to print receipts.");
-      return;
-    }
-
+    const win = window.open("", "_blank", "width=420,height=650");
+    if (!win) { toast.error("Pop-up blocked. Allow pop-ups to print receipts."); return; }
     const itemsMarkup = (bill.items || []).map(item => `
       <tr>
-        <td style="padding:4px 0;border-bottom:1px dashed #ccc;">${item.medicineName}<br/><small>${item.quantity} x ${item.unitPrice}</small></td>
-        <td style="padding:4px 0;border-bottom:1px dashed #ccc;text-align:right;">${item.quantity * item.unitPrice}</td>
+        <td style="padding:5px 0;border-bottom:1px dashed #ddd;">${item.medicineName}<br/><small style="color:#888">${item.quantity} × ₹${item.unitPrice}</small></td>
+        <td style="padding:5px 0;border-bottom:1px dashed #ddd;text-align:right;font-weight:bold;">₹${item.quantity * item.unitPrice}</td>
       </tr>
     `).join("");
-
-    const html = `
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>Receipt ${bill.billNo}</title>
-          <style>
-            body { font-family: monospace; font-size: 12px; margin: 0; padding: 20px; color: #000; width: 300px; }
-            .center { text-align: center; }
-            h2 { margin: 5px 0; font-size: 16px; }
-            p { margin: 3px 0; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th { border-bottom: 1px solid #000; padding-bottom: 4px; text-align: left; }
-            .totals { margin-top: 10px; border-top: 1px solid #000; padding-top: 10px; }
-            .total-row { display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; }
-            @media print { body { padding: 0; } }
-          </style>
-        </head>
-        <body onload="window.print();">
-          <div class="center">
-            <h2>${profile.pharmacyName || "Pharmacy"}</h2>
-            <p>${profile.address || ""}</p>
-            <p>${profile.phone || ""}</p>
-            <p>===============================</p>
-            <p>Receipt: ${bill.billNo}</p>
-            <p>Date: ${new Date(bill.date).toLocaleString()}</p>
-          </div>
-          <table>
-            <thead>
-              <tr><th>Item</th><th style="text-align:right">Total</th></tr>
-            </thead>
-            <tbody>${itemsMarkup}</tbody>
-          </table>
-          <div class="totals">
-            <div class="total-row"><span>Total</span><span>${fmtCurrency(bill.grandTotal)}</span></div>
-          </div>
-          <div class="center" style="margin-top:20px;">
-            <p>Thank you for your visit!</p>
-          </div>
-        </body>
-      </html>
-    `;
+    const html = `<html><head><meta charset="utf-8"/><title>Receipt ${bill.billNo}</title>
+      <style>body{font-family:monospace;font-size:13px;margin:0;padding:20px;color:#000;width:320px;}.center{text-align:center;}h2{margin:5px 0;font-size:17px;}p{margin:3px 0;}table{width:100%;border-collapse:collapse;margin-top:10px;}th{border-bottom:2px solid #000;padding-bottom:5px;text-align:left;}.totals{margin-top:10px;border-top:2px solid #000;padding-top:10px;}.total-row{display:flex;justify-content:space-between;font-weight:bold;font-size:15px;}@media print{body{padding:0;}}</style>
+      </head><body onload="window.print();">
+      <div class="center"><h2>${profile.pharmacyName || "Pharmacy"}</h2><p>${profile.address || ""}</p><p>${profile.phone || ""}</p><p>================================</p><p><strong>Receipt: ${bill.billNo}</strong></p><p>Date: ${new Date(bill.date || bill.createdAt).toLocaleString()}</p>${bill.customerName && bill.customerName !== "Walk-in Customer" ? `<p>Customer: ${bill.customerName}</p>` : ""}</div>
+      <table><thead><tr><th>Item</th><th style="text-align:right">Amount</th></tr></thead><tbody>${itemsMarkup}</tbody></table>
+      <div class="totals"><div class="total-row"><span>TOTAL</span><span>₹${bill.grandTotal}</span></div></div>
+      <div class="center" style="margin-top:20px;"><p>Thank you for your visit!</p><p>${profile.pharmacyName || "Pharmacy"}</p></div>
+      </body></html>`;
     win.document.write(html);
     win.document.close();
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <PageHdr title="Point of Sale" subtitle="Scan barcodes or search to quickly checkout" icon="pos" />
+      <PageHdr title="Point of Sale" subtitle="Scan barcodes or search to quickly checkout customers" icon="pos" />
       
-      <div style={{ display: "flex", gap: 24, flex: 1, marginTop: 24 }}>
+      <div style={{ display: "flex", gap: 24, flex: 1, marginTop: 24, minHeight: 0 }}>
         
-        {/* Left Side: Scanner & Search */}
-        <div style={{ flex: "2", display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* Left Side: Scanner & Medicine Grid */}
+        <div style={{ flex: "2", display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
           
-          <div style={{ background: C.surface, padding: 24, borderRadius: 16, border: `1px solid ${C.border}` }}>
-            <h3 style={{ margin: "0 0 16px 0", fontSize: 16, color: C.text }}>Add Item</h3>
-            
-            <form onSubmit={handleBarcodeSubmit} style={{ display: "flex", gap: 12 }}>
+          <div style={{ background: C.surface, padding: 20, borderRadius: 16, border: `1px solid ${C.border}` }}>
+            <h3 style={{ margin: "0 0 14px 0", fontSize: 15, color: C.text, fontWeight: 700 }}>Add Item</h3>
+            <form onSubmit={handleBarcodeSubmit} style={{ display: "flex", gap: 10 }}>
               <input
                 ref={scannerInputRef}
                 type="text"
-                placeholder="Scan barcode or type name..."
-                style={{ ...inputSt(), flex: 1, fontSize: 16, padding: "14px 16px" }}
+                placeholder="Scan barcode or type medicine name..."
+                style={{ ...inputSt(), flex: 1, fontSize: 15, padding: "12px 16px" }}
                 value={barcodeInput}
                 onChange={e => setBarcodeInput(e.target.value)}
                 autoFocus
               />
               <Btn type="submit" variant="primary">Add</Btn>
-              <Btn type="button" variant="outline" onClick={startCamera}>
-                <Icon name="camera" size={20} /> Camera
+              <Btn type="button" variant="secondary" onClick={startCamera}>
+                <Icon name="barcode" size={18} /> Camera
               </Btn>
             </form>
 
             {isCameraActive && (
-              <div style={{ marginTop: 16, position: "relative", borderRadius: 12, overflow: "hidden", background: "#000", height: 300 }}>
+              <div style={{ marginTop: 14, position: "relative", borderRadius: 12, overflow: "hidden", background: "#000", height: 260 }}>
                 <video ref={videoRef} autoPlay playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                <button onClick={stopCamera} style={{ position: "absolute", top: 12, right: 12, background: "rgba(0,0,0,0.5)", color: "#fff", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: "70%", height: 100, border: "2px dashed rgba(255,255,255,0.7)", borderRadius: 12, pointerEvents: "none" }}></div>
+                <button onClick={stopCamera} style={{ position: "absolute", top: 10, right: 10, background: "rgba(0,0,0,0.5)", color: "#fff", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Icon name="close" size={16} />
                 </button>
-                <div style={{ position: "absolute", bottom: 16, left: 0, right: 0, textAlign: "center", color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}>Point camera at barcode</div>
+                <div style={{ position: "absolute", bottom: 14, left: 0, right: 0, textAlign: "center", color: "#fff", fontSize: 12, textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}>Align barcode in frame</div>
               </div>
             )}
           </div>
 
           {/* Quick Add Medicine Grid */}
-          <div style={{ background: C.surface, padding: 24, borderRadius: 16, border: `1px solid ${C.border}`, flex: 1, overflowY: "auto" }}>
-            <h3 style={{ margin: "0 0 16px 0", fontSize: 16, color: C.text }}>Quick Items (Low Stock)</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12 }}>
-              {medicines.slice(0, 12).map(med => (
-                <button
-                  key={med._id || med.id}
-                  onClick={() => addToCart(med)}
-                  style={{ padding: 16, background: med.quantity <= 0 ? C.bg : C.surfaceHover, border: `1px solid ${C.border}`, borderRadius: 12, cursor: med.quantity <= 0 ? "not-allowed" : "pointer", textAlign: "left", transition: "all 0.15s" }}
-                  disabled={med.quantity <= 0}
-                >
-                  <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{med.name}</div>
-                  <div style={{ fontSize: 13, color: C.teal, fontWeight: 600 }}>{fmtCurrency(med.price || 0)}</div>
-                  <div style={{ fontSize: 11, color: med.quantity <= 0 ? C.red : C.muted, marginTop: 8 }}>{med.quantity <= 0 ? "Out of stock" : `${med.quantity} in stock`}</div>
-                </button>
-              ))}
+          <div style={{ background: C.surface, padding: 20, borderRadius: 16, border: `1px solid ${C.border}`, flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <h3 style={{ margin: 0, fontSize: 15, color: C.text, fontWeight: 700 }}>Quick Add</h3>
+              <input
+                type="text"
+                placeholder="Search medicines..."
+                value={medicineSearch}
+                onChange={e => setMedicineSearch(e.target.value)}
+                style={{ ...inputSt(), width: 220, padding: "8px 12px", fontSize: 13 }}
+              />
+            </div>
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 10 }}>
+                {filteredMedicines.map(med => {
+                  const daysToExp = getDaysToExpiry(med.expiryDate);
+                  const isExpiring = daysToExp >= 0 && daysToExp <= 30;
+                  const isExpired = daysToExp < 0;
+                  return (
+                    <button
+                      key={med._id || med.id}
+                      onClick={() => addToCart(med)}
+                      disabled={isExpired}
+                      style={{ padding: 14, background: isExpired ? C.bg : C.surfaceHover, border: `1px solid ${isExpiring ? C.orange : C.border}`, borderRadius: 12, cursor: isExpired ? "not-allowed" : "pointer", textAlign: "left", transition: "all 0.15s", position: "relative" }}
+                    >
+                      {isExpiring && !isExpired && (
+                        <div style={{ position: "absolute", top: 6, right: 6, width: 8, height: 8, borderRadius: "50%", background: C.orange }}></div>
+                      )}
+                      <div style={{ fontSize: 13, fontWeight: 600, color: isExpired ? C.muted : C.text, marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{med.name}</div>
+                      <div style={{ fontSize: 13, color: C.teal, fontWeight: 600 }}>{fmtCurrency(med.price || 0)}</div>
+                      <div style={{ fontSize: 11, color: isExpired ? C.red : C.muted, marginTop: 6 }}>
+                        {isExpired ? "Expired" : `${med.quantity} in stock`}
+                      </div>
+                    </button>
+                  );
+                })}
+                {filteredMedicines.length === 0 && (
+                  <p style={{ color: C.muted, fontSize: 13, gridColumn: "1/-1", textAlign: "center", padding: "24px 0" }}>No medicines found</p>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Right Side: Cart */}
-        <div style={{ flex: "1", display: "flex", flexDirection: "column", background: C.surface, borderRadius: 16, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-          <div style={{ padding: "20px 24px", borderBottom: `1px solid ${C.border}`, background: "#f8fafc" }}>
-            <h3 style={{ margin: 0, fontSize: 16, color: C.text }}>Current Sale</h3>
+        <div style={{ width: 340, flexShrink: 0, display: "flex", flexDirection: "column", background: C.surface, borderRadius: 16, border: `1px solid ${C.border}`, overflow: "hidden" }}>
+          <div style={{ padding: "18px 20px", borderBottom: `1px solid ${C.border}`, background: "#f8fafc" }}>
+            <h3 style={{ margin: "0 0 10px 0", fontSize: 15, color: C.text, fontWeight: 700 }}>Current Sale</h3>
+            <input
+              type="text"
+              placeholder="Customer name (optional)"
+              value={customerName}
+              onChange={e => setCustomerName(e.target.value)}
+              style={{ ...inputSt(), padding: "8px 12px", fontSize: 13 }}
+            />
           </div>
           
-          <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
             {cart.length === 0 ? (
               <div style={{ textAlign: "center", color: C.muted, marginTop: 40 }}>
                 <Icon name="pos" size={48} color={C.border} style={{ marginBottom: 16 }} />
-                <p>Cart is empty</p>
-                <p style={{ fontSize: 12 }}>Scan an item to add it here</p>
+                <p style={{ marginBottom: 6 }}>Cart is empty</p>
+                <p style={{ fontSize: 12 }}>Scan or click an item to add</p>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                {cart.map(item => (
-                  <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 16, borderBottom: `1px dashed ${C.border}` }}>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{item.medicineName}</div>
-                      <div style={{ fontSize: 13, color: C.muted }}>{fmtCurrency(item.unitPrice)}</div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <div style={{ display: "flex", alignItems: "center", border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
-                        <button onClick={() => setCart(prev => prev.map(i => i.id === item.id ? { ...i, quantity: Math.max(1, i.quantity - 1) } : i))} style={{ padding: "4px 8px", background: C.surfaceHover, border: "none", cursor: "pointer" }}>-</button>
-                        <span style={{ padding: "0 12px", fontSize: 14 }}>{item.quantity}</span>
-                        <button onClick={() => setCart(prev => prev.map(i => i.id === item.id ? { ...i, quantity: Math.min(i.maxQuantity, i.quantity + 1) } : i))} style={{ padding: "4px 8px", background: C.surfaceHover, border: "none", cursor: "pointer" }}>+</button>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {cart.map(item => {
+                  const daysToExp = getDaysToExpiry(item.expiryDate);
+                  const isExpiring = daysToExp >= 0 && daysToExp <= 30;
+                  return (
+                    <div key={item.id} style={{ paddingBottom: 14, borderBottom: `1px dashed ${C.border}` }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{item.medicineName}</div>
+                          <div style={{ fontSize: 12, color: C.muted }}>{fmtCurrency(item.unitPrice)} each</div>
+                          {isExpiring && (
+                            <div style={{ fontSize: 11, color: C.orange, marginTop: 2 }}>⚠ Expires in {daysToExp} days</div>
+                          )}
+                        </div>
+                        <button onClick={() => setCart(prev => prev.filter(i => i.id !== item.id))} style={{ background: "transparent", border: "none", cursor: "pointer", color: C.red, padding: 4, marginLeft: 8 }}>
+                          <Icon name="trash" size={14} />
+                        </button>
                       </div>
-                      <div style={{ fontWeight: 600, width: 60, textAlign: "right" }}>
-                        {fmtCurrency(item.quantity * item.unitPrice)}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
+                          <button onClick={() => setCart(prev => prev.map(i => i.id === item.id ? { ...i, quantity: Math.max(1, i.quantity - 1) } : i))} style={{ padding: "4px 10px", background: C.surfaceHover, border: "none", cursor: "pointer", fontSize: 15 }}>−</button>
+                          <span style={{ padding: "0 12px", fontSize: 14, fontWeight: 600 }}>{item.quantity}</span>
+                          <button onClick={() => setCart(prev => prev.map(i => i.id === item.id ? { ...i, quantity: Math.min(i.maxQuantity, i.quantity + 1) } : i))} style={{ padding: "4px 10px", background: C.surfaceHover, border: "none", cursor: "pointer", fontSize: 15 }}>+</button>
+                        </div>
+                        <div style={{ fontWeight: 700, color: C.text }}>
+                          {fmtCurrency(item.quantity * item.unitPrice)}
+                        </div>
                       </div>
-                      <button onClick={() => setCart(prev => prev.filter(i => i.id !== item.id))} style={{ background: "transparent", border: "none", cursor: "pointer", color: C.red, padding: 4 }}>
-                        <Icon name="trash" size={16} />
-                      </button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
 
-          <div style={{ padding: 24, borderTop: `1px solid ${C.border}`, background: "#f8fafc" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, fontSize: 14, color: C.muted }}>
+          <div style={{ padding: 20, borderTop: `1px solid ${C.border}`, background: "#f8fafc" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10, fontSize: 14, color: C.muted }}>
               <span>Subtotal</span>
               <span>{fmtCurrency(subtotal)}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16, fontSize: 14, color: C.muted, alignItems: "center" }}>
-              <span>Discount</span>
-              <input type="number" value={discount} onChange={e => setDiscount(Number(e.target.value))} style={{ ...inputSt(), width: 80, padding: "4px 8px", textAlign: "right" }} min="0" />
+              <span>Discount (%)</span>
+              <input type="number" value={discount} onChange={e => setDiscount(Math.min(100, Math.max(0, Number(e.target.value))))} style={{ ...inputSt(), width: 80, padding: "5px 8px", textAlign: "right", fontSize: 13 }} min="0" max="100" />
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24, fontSize: 20, fontWeight: 700, color: C.text }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20, fontSize: 22, fontWeight: 800, color: C.text }}>
               <span>Total</span>
-              <span>{fmtCurrency(grandTotal)}</span>
+              <span style={{ color: C.teal }}>{fmtCurrency(grandTotal)}</span>
             </div>
-            
-            <Btn variant="primary" style={{ width: "100%", padding: "16px 0", fontSize: 16 }} onClick={handleCheckout} disabled={cart.length === 0 || isCheckingOut}>
+            <Btn variant="primary" style={{ width: "100%", padding: "14px 0", fontSize: 15, justifyContent: "center" }} onClick={handleCheckout} disabled={cart.length === 0 || isCheckingOut}>
               {isCheckingOut ? "Processing..." : `Charge ${fmtCurrency(grandTotal)}`}
             </Btn>
           </div>
@@ -331,15 +344,22 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
 
       </div>
 
+      {/* Receipt Modal */}
       {receiptBill && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: C.surface, padding: 32, borderRadius: 16, width: 400, textAlign: "center" }}>
-            <Icon name="check" size={48} color={C.teal} style={{ marginBottom: 16 }} />
-            <h2 style={{ margin: "0 0 8px 0" }}>Sale Complete!</h2>
-            <p style={{ color: C.muted, marginBottom: 24 }}>Bill No: {receiptBill.billNo}</p>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
+          <div style={{ background: C.surface, padding: 36, borderRadius: 20, width: 420, textAlign: "center", position: "relative", boxShadow: "0 24px 48px rgba(0,0,0,0.18)", animation: "fadeUp 0.2s ease" }}>
+            <button onClick={() => setReceiptBill(null)} style={{ position: "absolute", top: 16, right: 16, background: C.surfaceHover, border: `1px solid ${C.border}`, borderRadius: "50%", width: 32, height: 32, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: C.muted }}>
+              <Icon name="close" size={18} />
+            </button>
+            <div style={{ width: 60, height: 60, borderRadius: "50%", background: `${C.teal}15`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+              <Icon name="check" size={32} color={C.teal} />
+            </div>
+            <h2 style={{ margin: "0 0 6px 0", fontSize: 22, color: C.text }}>Sale Complete!</h2>
+            <p style={{ color: C.muted, marginBottom: 6, fontSize: 14 }}>Bill No: <strong style={{ color: C.teal }}>{receiptBill.billNo}</strong></p>
+            <p style={{ color: C.muted, marginBottom: 24, fontSize: 14 }}>Total: <strong style={{ color: C.text }}>{fmtCurrency(receiptBill.grandTotal)}</strong></p>
             <div style={{ display: "flex", gap: 12 }}>
-              <Btn variant="outline" style={{ flex: 1 }} onClick={() => setReceiptBill(null)}>New Sale</Btn>
-              <Btn variant="primary" style={{ flex: 1 }} onClick={() => printReceipt(receiptBill)}>Print Receipt</Btn>
+              <Btn style={{ flex: 1, background: "#0f172a", color: "#fff", borderColor: "#0f172a", justifyContent: "center" }} onClick={() => setReceiptBill(null)}>New Sale</Btn>
+              <Btn variant="primary" style={{ flex: 1, justifyContent: "center" }} onClick={() => printReceipt(receiptBill)}>Print Receipt</Btn>
             </div>
           </div>
         </div>
@@ -347,3 +367,4 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
     </div>
   );
 }
+

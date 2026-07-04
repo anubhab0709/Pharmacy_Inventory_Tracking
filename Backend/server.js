@@ -9,6 +9,7 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import medicineRoutes from "./routes/medicineRoutes.js";
 import stockOutRoutes from "./routes/stockOutRoutes.js";
+import disposalRoutes from "./routes/disposalRoutes.js";
 import billRoutes from "./routes/billRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
@@ -54,6 +55,7 @@ app.get("/health", (req, res) => res.json({ ok: true, timestamp: new Date().toIS
 app.use("/api/auth", authRoutes);
 app.use("/api/medicines", medicineRoutes);
 app.use("/api/stock-out", stockOutRoutes);
+app.use("/api/disposals", disposalRoutes);
 app.use("/api/bills", billRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/contact", contactRoutes);

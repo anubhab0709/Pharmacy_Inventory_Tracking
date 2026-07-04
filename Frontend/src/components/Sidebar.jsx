@@ -7,15 +7,16 @@ import { getDaysToExpiry } from "../utils";
 import { useAuth } from "../context/AuthContext";
 
 const NAV = [
-  {iconName:"dashboard", label:"Dashboard", path: "/"},
-  {iconName:"pill",      label:"Medicines", path: "/medicines"},
-  {iconName:"plus",      label:"Add Medicine", path: "/add-medicine"},
-  {iconName:"calendar",  label:"Expiry Tracker", path:"/expiry-tracker"},
-  {iconName:"box",       label:"Stock Tracker", path:"/stock-tracker"},
-  {iconName:"stockout",  label:"Stock Out", path:"/stock-out"},
-  {iconName:"pos",       label:"Point of Sale", path: "/pos"},
-  {iconName:"receipt",   label:"Make Bill", path:"/make-bill"},
+  {iconName:"dashboard", label:"Dashboard",          path: "/"},
+  {iconName:"pill",      label:"Medicines",           path: "/medicines"},
+  {iconName:"plus",      label:"Add Medicine",        path: "/add-medicine"},
+  {iconName:"calendar",  label:"Expiry Tracker",      path:"/expiry-tracker"},
+  {iconName:"box",       label:"Stock Tracker",       path:"/stock-tracker"},
+  {iconName:"pos",       label:"Point of Sale",       path: "/pos"},
+  {iconName:"receipt",   label:"Make Bill",           path:"/make-bill"},
+  {iconName:"alertcircle",label:"Expired Medicines",  path:"/expired-medicines"},
 ];
+
 
 export default function Sidebar({ profile = {}, medicines = [], user, onClose }) {
   const navigate = useNavigate();

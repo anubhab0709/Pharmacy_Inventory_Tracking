@@ -11,6 +11,7 @@ export default function Medicines({ medicines = [], deleteMed, toast, canWrite =
   const [search,setSearch]=useState("");
   const [catFilter,setCatFilter]=useState("All");
   const [deleteId,setDeleteId]=useState(null);
+  const [viewMed, setViewMed] = useState(null);
   const [sortBy,setSortBy]=useState("name");
   const [selectedIds,setSelectedIds]=useState([]);
   const [selectAll,setSelectAll]=useState(false);
@@ -127,9 +128,9 @@ export default function Medicines({ medicines = [], deleteMed, toast, canWrite =
             {label:"Price",      render:r=><span style={{color:C.teal,fontWeight:600}}>{fmtCurrency(r.price)}</span>},
             {label:"Expiry",     render:r=>{const s=getExpiryStatus(r.expiryDate);return <div><p style={{color:C.text,margin:"0 0 3px",fontSize:12}}>{fmtDate(r.expiryDate)}</p><Badge {...s}/></div>;}},
             {label:"Actions",    render:r=><div style={{display:"flex",gap:6}}>
+              <Btn variant="secondary" size="sm" icon="eye" onClick={()=>setViewMed(r)}>View</Btn>
               {canWrite && <Btn variant="secondary" size="sm" icon="edit" onClick={()=>navigate(`/edit-medicine/${r.id||r._id}`)}>Edit</Btn>}
               {isAdmin && <Btn variant="danger" size="sm" icon="trash" onClick={()=>setDeleteId(r.id||r._id)}>Delete</Btn>}
-              {!canWrite && !isAdmin && <span style={{color:C.dim,fontSize:12}}>View only</span>}
             </div>},
           ]}
           rows={filtered}
@@ -139,6 +140,62 @@ export default function Medicines({ medicines = [], deleteMed, toast, canWrite =
       </Card>
 
       <ConfirmModal open={!!deleteId} title="Delete Medicine" message="This will permanently remove this medicine from your inventory. This action cannot be undone." onConfirm={handleConfirmDelete} onCancel={()=>setDeleteId(null)}/>
+      
+      {viewMed && (
+        <div style={{ position: 'fixed', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(6px)', zIndex: 1100, padding: 24, animation: 'fadeUp 0.2s ease' }}>
+          <div style={{ width: 450, background: C.surface, borderRadius: 20, overflow: 'hidden', boxShadow: '0 24px 50px rgba(0,0,0,0.2)' }}>
+            <div style={{ padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${C.border}` }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, color: C.text, fontWeight: 700 }}>Medicine Details</h3>
+              </div>
+              <button onClick={() => setViewMed(null)} style={{ width: 32, height: 32, borderRadius: '50%', background: C.surfaceHover, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: C.muted }}>
+                <Icon name="close" size={16} />
+              </button>
+            </div>
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 12, borderBottom: `1px dashed ${C.border}` }}>
+                <span style={{ color: C.muted, fontSize: 14 }}>Name:</span>
+                <strong style={{ color: C.text, fontSize: 14 }}>{viewMed.name}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 12, borderBottom: `1px dashed ${C.border}` }}>
+                <span style={{ color: C.muted, fontSize: 14 }}>Category:</span>
+                <strong style={{ color: C.purple, fontSize: 14 }}>{viewMed.category}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 12, borderBottom: `1px dashed ${C.border}` }}>
+                <span style={{ color: C.muted, fontSize: 14 }}>Manufacturer:</span>
+                <strong style={{ color: C.text, fontSize: 14 }}>{viewMed.manufacturer || 'N/A'}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 12, borderBottom: `1px dashed ${C.border}` }}>
+                <span style={{ color: C.muted, fontSize: 14 }}>Batch Number:</span>
+                <strong style={{ color: C.text, fontSize: 14 }}>{viewMed.batchNumber || viewMed.batchNo || 'N/A'}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 12, borderBottom: `1px dashed ${C.border}` }}>
+                <span style={{ color: C.muted, fontSize: 14 }}>Price:</span>
+                <strong style={{ color: C.teal, fontSize: 14 }}>{fmtCurrency(viewMed.price)}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 12, borderBottom: `1px dashed ${C.border}` }}>
+                <span style={{ color: C.muted, fontSize: 14 }}>Stock:</span>
+                <strong style={{ color: C.text, fontSize: 14 }}>{viewMed.quantity}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 12, borderBottom: `1px dashed ${C.border}` }}>
+                <span style={{ color: C.muted, fontSize: 14 }}>Threshold:</span>
+                <strong style={{ color: C.text, fontSize: 14 }}>{viewMed.threshold || 20}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 12, borderBottom: `1px dashed ${C.border}` }}>
+                <span style={{ color: C.muted, fontSize: 14 }}>Expiry Date:</span>
+                <strong style={{ color: C.text, fontSize: 14 }}>{fmtDate(viewMed.expiryDate)}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: C.muted, fontSize: 14 }}>Barcode:</span>
+                <strong style={{ color: C.text, fontSize: 14 }}>{viewMed.barcode || 'N/A'}</strong>
+              </div>
+            </div>
+            <div style={{ padding: '16px 24px', background: '#f8fafc', borderTop: `1px solid ${C.border}`, display: 'flex', justifyContent: 'flex-end' }}>
+              <Btn onClick={() => setViewMed(null)}>Close</Btn>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

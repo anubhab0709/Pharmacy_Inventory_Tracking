@@ -37,7 +37,7 @@ function MiniList({ title, sub, items, emptyMsg, onViewAll, renderRow }) {
   );
 }
 
-export default function Dashboard({ medicines = [], stockOuts = [], navigate }) {
+export default function Dashboard({ medicines = [], disposals = [], navigate }) {
   const totalStock = medicines.reduce((s,m)=>s+(m.quantity||0),0);
   const lowStock   = medicines.filter(m=>(m.quantity||0)<=(m.threshold||0) && (m.quantity||0)>0).length;
   const outOfStock = medicines.filter(m=>(m.quantity||0)===0).length;
@@ -48,7 +48,14 @@ export default function Dashboard({ medicines = [], stockOuts = [], navigate }) 
     return q>0 && q>t && getDaysToExpiry(m.expiryDate)>30;
   }).length;
   const totalValue = medicines.reduce((s,m)=>s+(m.quantity||0)*(m.price||0),0);
-  const recentOuts = [...stockOuts].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,5);
+  const recentDisposals = [...disposals].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,5);
+
+  // Count today's disposals
+  const todayKey = new Date().toISOString().split("T")[0];
+  const disposedToday = disposals.filter(d => {
+    const dk = new Date(d.createdAt).toISOString().split("T")[0];
+    return dk === todayKey;
+  }).reduce((sum, d) => sum + (d.quantity || 0), 0);
 
   const healthData = [
     { name:"In Stock", value:inStock, color:C.teal },
@@ -63,8 +70,8 @@ export default function Dashboard({ medicines = [], stockOuts = [], navigate }) 
     d.setDate(d.getDate()-(6-i));
     const key=d.toISOString().split("T")[0];
     const label=d.toLocaleDateString("en-IN",{weekday:"short"});
-    const count=stockOuts.filter(s=>{
-      const sd=new Date(s.date).toISOString().split("T")[0];
+    const count=disposals.filter(s=>{
+      const sd=new Date(s.createdAt).toISOString().split("T")[0];
       return sd===key;
     }).reduce((sum,s)=>sum+(s.quantity||0),0);
     return { name:label, units:count, date:key };
@@ -143,11 +150,11 @@ export default function Dashboard({ medicines = [], stockOuts = [], navigate }) 
         </div>
       )}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(185px,1fr))",gap:14,marginBottom:22}}>
-        <StatCard title="Total Medicines" value={medicines.length}                      sub={`${outOfStock} out of stock`} accent={C.teal}   iconName="pill"      delay={0.04} onClick={()=>goTo("/medicines")} ariaLabel="Open medicines list"/>
-        <StatCard title="Total Stock"     value={totalStock.toLocaleString()}           sub="Units in inventory"      accent={C.purple} iconName="box"       delay={0.07} onClick={()=>goToStock("all")} ariaLabel="Open stock tracker"/>
-        <StatCard title="Stock Value"     value={`₹${(totalValue/1000).toFixed(1)}K`}  sub="Total inventory worth"   accent={C.green}  iconName="coins"     delay={0.10} onClick={()=>goToStock("in-stock")} ariaLabel="Open stocked medicines"/>
-        <StatCard title="Dispensed Today" value={last7Days[6]?.units||0}                  sub="Units dispensed today"   accent={C.teal}   iconName="receipt"   delay={0.13} onClick={()=>goTo("/stock-out")} ariaLabel="Open stock out"/>
-        <StatCard title="Expiry Alerts"   value={expSoon+expired}                       sub="Within 30 days / expired"accent={C.red}    iconName="clock"     delay={0.16} onClick={()=>goToExpiry("critical")} ariaLabel="Open expiry tracker"/>
+        <StatCard title="Total Medicines" value={medicines.length}                      sub={`${outOfStock} out of stock`} accent={C.teal}   iconName="pill"       delay={0.04} onClick={()=>goTo("/medicines")} ariaLabel="Open medicines list"/>
+        <StatCard title="Total Stock"     value={totalStock.toLocaleString()}           sub="Units in inventory"      accent={C.purple} iconName="box"        delay={0.07} onClick={()=>goToStock("all")} ariaLabel="Open stock tracker"/>
+        <StatCard title="Stock Value"     value={`₹${(totalValue/1000).toFixed(1)}K`}  sub="Total inventory worth"   accent={C.green}  iconName="coins"      delay={0.10} onClick={()=>goToStock("in-stock")} ariaLabel="Open stocked medicines"/>
+        <StatCard title="Disposed Today"  value={disposedToday}                         sub="Units disposed today"    accent={C.orange} iconName="alertcircle" delay={0.13} onClick={()=>goTo("/expired-medicines")} ariaLabel="Open expired medicines"/>
+        <StatCard title="Expiry Alerts"   value={expSoon+expired}                       sub="Within 30 days / expired"accent={C.red}    iconName="clock"      delay={0.16} onClick={()=>goToExpiry("critical")} ariaLabel="Open expiry tracker"/>
       </div>
 
       <div style={{display:"grid",gridTemplateColumns:"1.2fr 1fr",gap:18,marginBottom:18}}>
@@ -169,14 +176,14 @@ export default function Dashboard({ medicines = [], stockOuts = [], navigate }) 
           }
         </Card>
         <Card>
-          <p style={{fontFamily:"'Inter',sans-serif",fontSize:16,fontWeight:700,color:C.text,margin:"0 0 2px"}}>Weekly Dispensing Trend</p>
-          <p style={{color:C.muted,fontSize:12,marginBottom:16}}>Units dispensed over the last 7 days</p>
+          <p style={{fontFamily:"'Inter',sans-serif",fontSize:16,fontWeight:700,color:C.text,margin:"0 0 2px"}}>Weekly Disposal Trend</p>
+          <p style={{color:C.muted,fontSize:12,marginBottom:16}}>Units disposed over the last 7 days</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={last7Days} barCategoryGap="30%">
               <XAxis dataKey="name" tick={{fill:C.dim,fontSize:10}} axisLine={false} tickLine={false}/>
               <YAxis tick={{fill:C.dim,fontSize:10}} axisLine={false} tickLine={false} allowDecimals={false}/>
-              <Tooltip contentStyle={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,color:C.text,fontSize:12}} formatter={(v)=>[`${v} units`,"Dispensed"]} cursor={{fill:"rgba(0,0,0,0.03)"}}/>
-              <Bar dataKey="units" fill={C.teal} radius={[5,5,0,0]} label={{position:"top",fill:C.teal,fontSize:10,fontWeight:600}}/>
+              <Tooltip contentStyle={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,color:C.text,fontSize:12}} formatter={(v)=>[`${v} units`,"Disposed"]} cursor={{fill:"rgba(0,0,0,0.03)"}}/>
+              <Bar dataKey="units" fill={C.orange} radius={[5,5,0,0]} label={{position:"top",fill:C.orange,fontSize:10,fontWeight:600}}/>
             </BarChart>
           </ResponsiveContainer>
         </Card>
@@ -227,23 +234,22 @@ export default function Dashboard({ medicines = [], stockOuts = [], navigate }) 
       <Card>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
           <div>
-            <p style={{fontFamily:"'Inter',sans-serif",fontSize:16,fontWeight:700,color:C.text,margin:0}}>Recent Dispensing Activity</p>
-            <p style={{color:C.muted,fontSize:12,margin:0}}>Last 5 transactions</p>
+            <p style={{fontFamily:"'Inter',sans-serif",fontSize:16,fontWeight:700,color:C.text,margin:0}}>Recent Disposals</p>
+            <p style={{color:C.muted,fontSize:12,margin:0}}>Last 5 disposal records</p>
           </div>
-          <Btn variant="ghost" size="sm" icon="arrowright" onClick={()=>navigate("/stock-out")}>View All</Btn>
+          <Btn variant="ghost" size="sm" icon="arrowright" onClick={()=>navigate("/expired-medicines")}>View All</Btn>
         </div>
-        {recentOuts.length===0
-          ? <p style={{color:C.dim,textAlign:"center",padding:"28px 0",fontSize:13}}>No dispensing activity yet</p>
+        {recentDisposals.length===0
+          ? <p style={{color:C.dim,textAlign:"center",padding:"28px 0",fontSize:13}}>No disposal activity yet</p>
           : <Table
               cols={[
-                {label:"Bill No",  render:r=><span style={{color:C.teal,fontWeight:700,fontSize:12,fontFamily:"'Inter',sans-serif"}}>{r.billNo}</span>},
-                {label:"Medicine", key:"medicineName"},
-                {label:"Qty",      render:r=><span style={{fontWeight:700}}>{r.quantity}</span>},
-                {label:"Patient",  key:"patientName"},
-                {label:"Doctor",   render:r=><span style={{color:C.muted}}>{r.prescribedBy||"—"}</span>},
-                {label:"Date",     render:r=><span style={{color:C.muted,fontSize:12}}>{fmtDate(r.date)}</span>},
+                {label:"Medicine", render:r=><span style={{color:C.text,fontWeight:700,fontSize:13}}>{r.medicineName}</span>},
+                {label:"Qty",      render:r=><span style={{fontWeight:700,color:C.red}}>{r.quantity}</span>},
+                {label:"Reason",   render:r=><span style={{color:C.orange,fontSize:12}}>{r.reason}</span>},
+                {label:"Disposed By", render:r=><span style={{color:C.muted,fontSize:12}}>{r.disposedBy||"Staff"}</span>},
+                {label:"Date",     render:r=><span style={{color:C.muted,fontSize:12}}>{fmtDate(r.createdAt)}</span>},
               ]}
-              rows={recentOuts}
+              rows={recentDisposals}
             />
         }
       </Card>

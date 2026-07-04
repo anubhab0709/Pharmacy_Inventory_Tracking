@@ -15,17 +15,17 @@ import AddMedicine from "./pages/AddMedicine";
 import EditMedicine from "./pages/EditMedicine";
 import ExpiryTracker from "./pages/ExpiryTracker";
 import StockTracker from "./pages/StockTracker";
-import StockOut from "./pages/StockOut";
+import ExpiredMedicines from "./pages/ExpiredMedicines";
 import MakeBill from "./pages/MakeBill";
 import PointOfSale from "./pages/PointOfSale";
 import Profile from "./pages/Profile";
 import ContactUs from "./pages/ContactUs";
-import { getMedicines, addMedicine, updateMedicine, deleteMedicine, getStockOuts, addStockOut, deleteStockOut, getBills, createBill, getProfile, updateProfile } from "./api/medicinesApi";
+import { getMedicines, addMedicine, updateMedicine, deleteMedicine, getDisposals, addDisposal, deleteDisposal, getBills, createBill, getProfile, updateProfile } from "./api/medicinesApi";
 
 function AppLayout() {
   const { user, canWrite, isAdmin } = useAuth();
   const [medicines, setMedicines] = useState([]);
-  const [stockOuts, setStockOuts] = useState([]);
+  const [disposals, setDisposals] = useState([]);
   const [bills, setBills] = useState([]);
   const [profile, setProfile] = useState({});
   const [loading, setLoading] = useState(true);
@@ -36,9 +36,9 @@ function AppLayout() {
 
   const loadData = async () => {
     try {
-      const [m, s, b, p] = await Promise.all([getMedicines(), getStockOuts(), getBills(), getProfile()]);
+      const [m, d, b, p] = await Promise.all([getMedicines(), getDisposals(), getBills(), getProfile()]);
       setMedicines(m);
-      setStockOuts(s);
+      setDisposals(d);
       setBills(b);
       setProfile(p);
     } catch (err) {
@@ -64,21 +64,28 @@ function AppLayout() {
     setMedicines((prev) => prev.filter((m) => m._id !== id && m.id !== id));
   };
 
-  const addDispense = async (data) => {
-    const stockOut = await addStockOut(data);
-    setStockOuts((prev) => [stockOut, ...prev]);
-    setMedicines((prev) => prev.map((m) => ((m._id || m.id) === data.medicineId ? { ...m, quantity: m.quantity - data.quantity } : m)));
+  const addDisposalRecord = async (data) => {
+    const disposal = await addDisposal(data);
+    setDisposals((prev) => [disposal, ...prev]);
+    // Also deduct from local medicine state so stock shows immediately
+    setMedicines((prev) =>
+      prev.map((m) =>
+        (m._id || m.id) === data.medicineId
+          ? { ...m, quantity: m.quantity - data.quantity }
+          : m
+      )
+    );
+  };
+
+  const deleteDisposalRecord = async (id) => {
+    await deleteDisposal(id);
+    setDisposals((prev) => prev.filter((d) => d._id !== id && d.id !== id));
   };
 
   const addBill = async (data) => {
     const bill = await createBill(data);
     await loadData();
     return bill;
-  };
-
-  const deleteDispense = async (id) => {
-    await deleteStockOut(id);
-    setStockOuts((prev) => prev.filter((s) => s._id !== id && s.id !== id));
   };
 
   const handleUpdateProfile = async (data) => {
@@ -128,13 +135,13 @@ function AppLayout() {
 
           <main style={{ flex: 1, overflowY: "auto", padding: "28px 32px", paddingBottom: 40 }}>
             <Routes>
-              <Route path="/" element={<Dashboard medicines={medicines} stockOuts={stockOuts} navigate={navigate} />} />
+              <Route path="/" element={<Dashboard medicines={medicines} disposals={disposals} navigate={navigate} />} />
               <Route path="/medicines" element={<Medicines medicines={medicines} deleteMed={deleteMed} toast={toast} canWrite={canWrite} isAdmin={isAdmin} />} />
-              <Route path="/add-medicine" element={<AddMedicine />} />
-              <Route path="/edit-medicine/:id" element={<EditMedicine />} />
+              <Route path="/add-medicine" element={<AddMedicine onAdd={addOrUpdateMedicine} />} />
+              <Route path="/edit-medicine/:id" element={<EditMedicine onUpdate={addOrUpdateMedicine} />} />
               <Route path="/expiry-tracker" element={<ExpiryTracker medicines={medicines} />} />
               <Route path="/stock-tracker" element={<StockTracker medicines={medicines} addOrUpdateMedicine={addOrUpdateMedicine} toast={toast} canWrite={canWrite} />} />
-              <Route path="/stock-out" element={<StockOut medicines={medicines} stockOuts={stockOuts} profile={profile} addDispense={addDispense} deleteDispense={deleteDispense} toast={toast} canWrite={canWrite} isAdmin={isAdmin} />} />
+              <Route path="/expired-medicines" element={<ExpiredMedicines medicines={medicines} disposals={disposals} profile={profile} addDisposal={addDisposalRecord} deleteDisposal={deleteDisposalRecord} toast={toast} canWrite={canWrite} isAdmin={isAdmin} />} />
               <Route path="/make-bill" element={<MakeBill medicines={medicines} bills={bills} profile={profile} createBill={addBill} toast={toast} canWrite={canWrite} />} />
               <Route path="/pos" element={<PointOfSale medicines={medicines} profile={profile} createBill={addBill} toast={toast} />} />
               <Route path="/profile" element={<Profile profile={profile} updateProfileApi={handleUpdateProfile} toast={toast} />} />
