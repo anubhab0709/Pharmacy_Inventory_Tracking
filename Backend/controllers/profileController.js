@@ -1,43 +1,81 @@
 import Profile from "../models/profile.js";
 import { shopInitials } from "../utils/pharmacyProfile.js";
 
-// ➤ GET Profile
+// -------------------- GET PROFILE --------------------
 export const getProfile = async (req, res) => {
   try {
-    let profile = await Profile.findOne();
+    const ownerId = req.user.id;
+
+    let profile = await Profile.findOne({ ownerId });
+
     if (!profile) {
-      profile = await Profile.create({});
+      profile = await Profile.create({
+        ownerId,
+      });
     }
-    res.json({ success: true, data: profile });
+
+    return res.status(200).json({
+      success: true,
+      data: profile,
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
 
-// ➤ UPDATE Profile
+// Fields allowed to update
 const PROFILE_FIELDS = [
-  "pharmacyName", "ownerName", "licenseNo", "drugLicense",
-  "phone", "email", "address", "gstin", "registeredSince", "avatar",
+  "pharmacyName",
+  "ownerName",
+  "licenseNo",
+  "drugLicense",
+  "phone",
+  "email",
+  "address",
+  "gstin",
+  "registeredSince",
 ];
 
+// -------------------- UPDATE PROFILE --------------------
 export const updateProfile = async (req, res) => {
   try {
+    const ownerId = req.user.id;
+
     const payload = {};
-    for (const key of PROFILE_FIELDS) {
-      if (req.body[key] !== undefined) payload[key] = req.body[key];
-    }
+
+    PROFILE_FIELDS.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        payload[field] = req.body[field];
+      }
+    });
+
     if (payload.pharmacyName) {
       payload.avatar = shopInitials(payload.pharmacyName);
     }
 
-    let profile = await Profile.findOne();
+    let profile = await Profile.findOne({ ownerId });
+
     if (!profile) {
-      profile = await Profile.create(payload);
+      profile = await Profile.create({
+        ownerId,
+        ...payload,
+      });
     } else {
-      profile = await Profile.findByIdAndUpdate(profile._id, payload, { new: true });
+      Object.assign(profile, payload);
+      await profile.save();
     }
-    res.json({ success: true, data: profile });
+
+    return res.status(200).json({
+      success: true,
+      data: profile,
+    });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+    });
   }
 };

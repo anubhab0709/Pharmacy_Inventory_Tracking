@@ -14,6 +14,7 @@ const medicineSchema = new mongoose.Schema(
     ownerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     dateAdded: { type: Date, default: Date.now },
     description: { type: String },
+    barcode: { type: String, sparse: true },
   },
   { timestamps: true }
 );

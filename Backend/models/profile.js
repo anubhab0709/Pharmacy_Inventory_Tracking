@@ -2,6 +2,13 @@ import mongoose from "mongoose";
 
 const profileSchema = new mongoose.Schema(
   {
+    ownerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User", // Change to your User model name if different
+      required: true,
+      unique: true,
+    },
+
     pharmacyName: { type: String, default: "" },
     ownerName: { type: String, default: "" },
     licenseNo: { type: String, default: "" },

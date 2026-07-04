@@ -5,22 +5,18 @@ import {
   refresh,
   logout,
   me,
-  register,
   setupStatus,
   sendOtp,
   verifyOtp,
   requestPasswordReset,
   resetPassword,
-  googleAuth,
   loginValidators,
-  registerValidators,
   pharmacySignupValidators,
   verifyOtpValidators,
   requestPasswordResetValidators,
   resetPasswordValidators,
-  googleAuthValidators,
 } from "../controllers/authController.js";
-import { authenticate, authorize } from "../middleware/auth.js";
+import { authenticate } from "../middleware/auth.js";
 
 const router = express.Router();
 
@@ -37,12 +33,9 @@ router.post("/send-otp", authLimiter, pharmacySignupValidators, sendOtp);
 router.post("/request-password-reset", authLimiter, requestPasswordResetValidators, requestPasswordReset);
 router.post("/reset-password", authLimiter, resetPasswordValidators, resetPassword);
 router.post("/verify-otp", authLimiter, verifyOtpValidators, verifyOtp);
-// Google sign-in temporarily disabled
-// router.post("/google", authLimiter, googleAuthValidators, googleAuth);
 router.post("/login", authLimiter, loginValidators, login);
 router.post("/refresh", authLimiter, refresh);
 router.post("/logout", logout);
 router.get("/me", authenticate, me);
-router.post("/register", authenticate, authorize("admin"), registerValidators, register);
 
 export default router;

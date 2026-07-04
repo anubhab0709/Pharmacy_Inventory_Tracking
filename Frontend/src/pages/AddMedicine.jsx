@@ -15,6 +15,7 @@ const AddMedicine = () => {
     expiryDate: '',
     manufacturer: '',
     batchNumber: '',
+    barcode: '',
   })
   const [loading, setLoading] = useState(false)
 
@@ -50,14 +51,15 @@ const AddMedicine = () => {
 
     try {
       setLoading(true)
-      const { name, category, quantity, batchNumber, manufacturer, expiryDate } = formData
+      const { name, category, quantity, batchNumber, manufacturer, expiryDate, barcode } = formData
       const payload = {
         name,
         category,
         quantity: parseInt(quantity, 10),
         batchNumber,
         manufacturer,
-        expiryDate
+        expiryDate,
+        barcode
       }
       await addMedicine(payload)
       toast.success('Medicine added successfully!')
@@ -143,6 +145,15 @@ const AddMedicine = () => {
             value={formData.batchNumber}
             onChange={handleChange}
             placeholder="Enter batch number"
+          />
+
+          <Input
+            label="Barcode (Optional)"
+            type="text"
+            name="barcode"
+            value={formData.barcode}
+            onChange={handleChange}
+            placeholder="Scan or enter barcode"
           />
 
           <div className="form-actions">

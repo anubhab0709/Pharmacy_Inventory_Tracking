@@ -4,14 +4,14 @@ import {
   addStockOut,
   deleteStockOut,
 } from "../controllers/stockOutController.js";
-import { authenticate, authorize } from "../middleware/auth.js";
+import { authenticate } from "../middleware/auth.js";
 
 const router = express.Router();
 
 router.use(authenticate);
 
-router.get("/", authorize("admin", "pharmacist", "viewer"), getStockOuts);
-router.post("/", authorize("admin", "pharmacist"), addStockOut);
-router.delete("/:id", authorize("admin"), deleteStockOut);
+router.get("/",      getStockOuts);
+router.post("/",     addStockOut);
+router.delete("/:id", deleteStockOut);
 
 export default router;

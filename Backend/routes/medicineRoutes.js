@@ -2,20 +2,22 @@ import express from "express";
 import {
   getMedicines,
   getMedicineById,
+  getMedicineByBarcode,
   addMedicine,
   updateMedicine,
   deleteMedicine,
 } from "../controllers/medicineController.js";
-import { authenticate, authorize } from "../middleware/auth.js";
+import { authenticate } from "../middleware/auth.js";
 
 const router = express.Router();
 
 router.use(authenticate);
 
-router.get("/", authorize("admin", "pharmacist", "viewer"), getMedicines);
-router.get("/:id", authorize("admin", "pharmacist", "viewer"), getMedicineById);
-router.post("/", authorize("admin", "pharmacist"), addMedicine);
-router.put("/:id", authorize("admin", "pharmacist"), updateMedicine);
-router.delete("/:id", authorize("admin", "pharmacist"), deleteMedicine);
+router.get("/",    getMedicines);
+router.get("/barcode/:code", getMedicineByBarcode);
+router.get("/:id", getMedicineById);
+router.post("/",   addMedicine);
+router.put("/:id", updateMedicine);
+router.delete("/:id", deleteMedicine);
 
 export default router;

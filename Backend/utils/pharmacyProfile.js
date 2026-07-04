@@ -10,7 +10,7 @@ export function shopInitials(shopName = "") {
     .toUpperCase() || "RX";
 }
 
-export async function syncPharmacyProfile({ shopName, ownerName, email, phone }) {
+export async function syncPharmacyProfile({ userId, shopName, ownerName, email, phone }) {
   const data = {
     pharmacyName: shopName,
     ownerName,
@@ -20,9 +20,9 @@ export async function syncPharmacyProfile({ shopName, ownerName, email, phone })
     registeredSince: new Date().getFullYear().toString(),
   };
 
-  let profile = await Profile.findOne();
+  let profile = await Profile.findOne({ ownerId: userId });
   if (!profile) {
-    profile = await Profile.create(data);
+    profile = await Profile.create({ ...data, ownerId: userId });
   } else {
     profile = await Profile.findByIdAndUpdate(profile._id, data, { new: true });
   }

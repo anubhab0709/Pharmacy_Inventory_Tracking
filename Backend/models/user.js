@@ -3,27 +3,25 @@ import bcrypt from "bcryptjs";
 
 const userSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    phone: { type: String, trim: true },
-    googleId: { type: String, sparse: true, unique: true },
-    passwordHash: { type: String, select: false },
-    authProvider: { type: String, enum: ["local", "google"], default: "local" },
-    role: { type: String, enum: ["admin", "pharmacist", "viewer"], default: "pharmacist" },
-    isActive: { type: Boolean, default: true },
+    name:             { type: String, required: true, trim: true },
+    email:            { type: String, required: true, unique: true, lowercase: true, trim: true },
+    phone:            { type: String, trim: true },
+    passwordHash:     { type: String, select: false },
+    isActive:         { type: Boolean, default: true },
     refreshTokenHash: { type: String, select: false },
-    lastLogin: { type: Date },
+    lastLogin:        { type: Date },
   },
   { timestamps: true }
 );
 
+// Require a password for local accounts (single-admin, local auth only)
 userSchema.pre("validate", function (next) {
   // Skip on partial updates (e.g. refresh token rotation) where passwordHash is not loaded
-  if (!this.isNew && !this.isModified("passwordHash") && !this.isModified("googleId")) {
+  if (!this.isNew && !this.isModified("passwordHash")) {
     return next();
   }
-  if (!this.passwordHash && !this.googleId) {
-    this.invalidate("passwordHash", "Password or Google account required");
+  if (!this.passwordHash) {
+    this.invalidate("passwordHash", "Password is required");
   }
   next();
 });

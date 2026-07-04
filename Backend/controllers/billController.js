@@ -1,20 +1,14 @@
 import Bill from "../models/bill.js";
 import Medicine from "../models/medicine.js";
 
-const buildMedicineQuery = (req, medicineId) => {
-  if (req.user?.role === "admin") return { _id: medicineId };
-  return { _id: medicineId, ownerId: req.user?.id };
-};
-
-const billNumberFor = async (ownerId, fallbackPrefix = "BL") => {
-  const count = await Bill.countDocuments(ownerId ? { ownerId } : {});
-  return `${fallbackPrefix}-${String(count + 1).padStart(5, "0")}`;
+const billNumberFor = async (ownerId) => {
+  const count = await Bill.countDocuments({ ownerId });
+  return `BL-${String(count + 1).padStart(5, "0")}`;
 };
 
 export const getBills = async (req, res) => {
   try {
-    const query = req.user?.role === "admin" ? {} : { ownerId: req.user?.id };
-    const bills = await Bill.find(query).sort({ date: -1, createdAt: -1 });
+    const bills = await Bill.find({ ownerId: req.user.id }).sort({ date: -1, createdAt: -1 });
     res.json({ success: true, data: bills });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -22,6 +16,7 @@ export const getBills = async (req, res) => {
 };
 
 export const createBill = async (req, res) => {
+  // Track medicines we deducted so we can roll back on failure
   const adjustedMedicines = [];
   try {
     const items = Array.isArray(req.body.items) ? req.body.items : [];
@@ -34,66 +29,72 @@ export const createBill = async (req, res) => {
 
     for (const item of items) {
       const medicineId = item.medicineId || item.id;
-      const quantity = Number(item.quantity);
+      const quantity   = Number(item.quantity);
+
       if (!medicineId || !quantity || quantity <= 0) {
         return res.status(400).json({ success: false, message: "Each bill row needs a medicine and quantity" });
       }
 
-      const medicine = await Medicine.findOne(buildMedicineQuery(req, medicineId));
+      // Single fetch per medicine — validate and prepare in one pass
+      const medicine = await Medicine.findOne({ _id: medicineId, ownerId: req.user.id });
       if (!medicine) {
         return res.status(404).json({ success: false, message: "Medicine not found" });
       }
       if ((medicine.quantity || 0) < quantity) {
-        return res.status(400).json({ success: false, message: `Only ${medicine.quantity} units available for ${medicine.name}` });
+        return res.status(400).json({
+          success: false,
+          message: `Only ${medicine.quantity} units available for ${medicine.name}`,
+        });
       }
 
       const unitPrice = Number(item.unitPrice ?? medicine.price ?? 0);
       const lineTotal = Number((unitPrice * quantity).toFixed(2));
       subtotal += lineTotal;
 
-      billItems.push({
-        medicineId: medicine._id,
-        medicineName: medicine.name,
-        quantity,
-        unitPrice,
-        lineTotal,
-      });
+      billItems.push({ medicine, quantity, unitPrice, lineTotal });
     }
 
-    for (const item of billItems) {
-      const medicine = await Medicine.findOne(buildMedicineQuery(req, item.medicineId));
-      if (!medicine) continue;
-      medicine.quantity -= item.quantity;
+    // Deduct stock for all validated items
+    for (const { medicine, quantity, unitPrice, lineTotal } of billItems) {
+      medicine.quantity -= quantity;
       await medicine.save();
-      adjustedMedicines.push({ medicineId: medicine._id, quantity: item.quantity });
+      adjustedMedicines.push({ medicine, quantity });
     }
 
-    const billNo = req.body.billNo || await billNumberFor(req.user?.id);
+    // Build the bill items payload for storage
+    const billItemsPayload = billItems.map(({ medicine, quantity, unitPrice, lineTotal }) => ({
+      medicineId:   medicine._id,
+      medicineName: medicine.name,
+      quantity,
+      unitPrice,
+      lineTotal,
+    }));
+
+    const billNo = req.body.billNo || await billNumberFor(req.user.id);
     const bill = await Bill.create({
       billNo,
-      ownerId: req.user?.id,
-      customerName: req.body.customerName || "",
-      pharmacyName: req.body.pharmacyName || "",
+      ownerId:         req.user.id,
+      customerName:    req.body.customerName    || "",
+      pharmacyName:    req.body.pharmacyName    || "",
       pharmacyAddress: req.body.pharmacyAddress || "",
-      pharmacyPhone: req.body.pharmacyPhone || "",
-      pharmacyEmail: req.body.pharmacyEmail || "",
-      items: billItems,
-      subtotal: Number(subtotal.toFixed(2)),
-      grandTotal: Number(Number(req.body.grandTotal ?? subtotal).toFixed(2)),
-      date: req.body.date || new Date(),
-      notes: req.body.notes || "",
+      pharmacyPhone:   req.body.pharmacyPhone   || "",
+      pharmacyEmail:   req.body.pharmacyEmail   || "",
+      items:           billItemsPayload,
+      subtotal:        Number(subtotal.toFixed(2)),
+      grandTotal:      Number(Number(req.body.grandTotal ?? subtotal).toFixed(2)),
+      date:            req.body.date || new Date(),
+      notes:           req.body.notes || "",
     });
 
     res.status(201).json({ success: true, data: bill });
   } catch (err) {
-    for (const adjustment of adjustedMedicines) {
+    // Best-effort rollback — restore stock for any medicine already deducted
+    for (const { medicine, quantity } of adjustedMedicines) {
       try {
-        const medicine = await Medicine.findOne(buildMedicineQuery(req, adjustment.medicineId));
-        if (!medicine) continue;
-        medicine.quantity += adjustment.quantity;
+        medicine.quantity += quantity;
         await medicine.save();
       } catch {
-        // Best-effort rollback; the original error is still reported below.
+        // Rollback failure is secondary; report the original error below
       }
     }
     res.status(400).json({ success: false, message: err.message });

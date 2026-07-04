@@ -5,6 +5,16 @@ export async function getMedicines() {
   return json.data;
 }
 
+export async function getMedicineByBarcode(code) {
+  const json = await apiFetch(`/api/medicines/barcode/${code}`);
+  return json.data;
+}
+
+export async function getMedicineById(id) {
+  const json = await apiFetch(`/api/medicines/${id}`);
+  return json.data;
+}
+
 export async function addMedicine(data) {
   const json = await apiFetch("/api/medicines", {
     method: "POST",

@@ -7,13 +7,17 @@ import { useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Sidebar from "./components/Sidebar";
 import LoadingScreen from "./components/LoadingScreen";
+import { Icon } from "./components/SharedUI";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Medicines from "./pages/Medicines";
+import AddMedicine from "./pages/AddMedicine";
+import EditMedicine from "./pages/EditMedicine";
 import ExpiryTracker from "./pages/ExpiryTracker";
 import StockTracker from "./pages/StockTracker";
 import StockOut from "./pages/StockOut";
 import MakeBill from "./pages/MakeBill";
+import PointOfSale from "./pages/PointOfSale";
 import Profile from "./pages/Profile";
 import ContactUs from "./pages/ContactUs";
 import { getMedicines, addMedicine, updateMedicine, deleteMedicine, getStockOuts, addStockOut, deleteStockOut, getBills, createBill, getProfile, updateProfile } from "./api/medicinesApi";
@@ -25,6 +29,7 @@ function AppLayout() {
   const [bills, setBills] = useState([]);
   const [profile, setProfile] = useState({});
   const [loading, setLoading] = useState(true);
+  const [isNavOpen, setIsNavOpen] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => { loadData(); }, []);
@@ -99,10 +104,17 @@ function AppLayout() {
         input,select,textarea{color-scheme:light}
       `}</style>
       <div style={{ display: "flex", width: "100%", height: "100vh", overflow: "hidden", background: "var(--bg)" }}>
-        <Sidebar profile={profile} medicines={medicines} user={user} />
+        {isNavOpen && <Sidebar profile={profile} medicines={medicines} user={user} onClose={() => setIsNavOpen(false)} />}
         <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
           <header style={{ height: 68, borderBottom: `1px solid ${C.border}`, background: C.surface, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", flexShrink: 0, boxShadow: "0 2px 10px rgba(0,0,0,0.02)" }}>
-            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 20, fontWeight: 700, color: C.text, letterSpacing: "-0.02em", margin: 0 }}>Workspace Overview</p>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              {!isNavOpen && (
+                <button onClick={() => setIsNavOpen(true)} style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 4 }}>
+                  <Icon name="dashboard" size={20} color={C.text} />
+                </button>
+              )}
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 20, fontWeight: 700, color: C.text, letterSpacing: "-0.02em", margin: 0 }}>Workspace Overview</p>
+            </div>
             <button onClick={() => navigate("/profile")} style={{ display: "flex", alignItems: "center", gap: 12, background: "transparent", border: "none", cursor: "pointer", padding: "4px", transition: "opacity 0.2s" }} onMouseEnter={(e) => { e.currentTarget.style.opacity = 0.8; }} onMouseLeave={(e) => { e.currentTarget.style.opacity = 1; }}>
               <div style={{ textAlign: "right" }}>
                 <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 600, color: C.text, margin: 0 }}>{profile.pharmacyName || "Pharmacy Profile"}</p>
@@ -117,12 +129,14 @@ function AppLayout() {
           <main style={{ flex: 1, overflowY: "auto", padding: "28px 32px", paddingBottom: 40 }}>
             <Routes>
               <Route path="/" element={<Dashboard medicines={medicines} stockOuts={stockOuts} navigate={navigate} />} />
-              <Route path="/medicines" element={<Medicines medicines={medicines} addOrUpdateMedicine={addOrUpdateMedicine} deleteMed={deleteMed} toast={toast} canWrite={canWrite} isAdmin={isAdmin} />} />
-              <Route path="/add-medicine" element={<Medicines medicines={medicines} addOrUpdateMedicine={addOrUpdateMedicine} deleteMed={deleteMed} toast={toast} canWrite={canWrite} isAdmin={isAdmin} openAddOnLoad />} />
+              <Route path="/medicines" element={<Medicines medicines={medicines} deleteMed={deleteMed} toast={toast} canWrite={canWrite} isAdmin={isAdmin} />} />
+              <Route path="/add-medicine" element={<AddMedicine />} />
+              <Route path="/edit-medicine/:id" element={<EditMedicine />} />
               <Route path="/expiry-tracker" element={<ExpiryTracker medicines={medicines} />} />
               <Route path="/stock-tracker" element={<StockTracker medicines={medicines} addOrUpdateMedicine={addOrUpdateMedicine} toast={toast} canWrite={canWrite} />} />
               <Route path="/stock-out" element={<StockOut medicines={medicines} stockOuts={stockOuts} profile={profile} addDispense={addDispense} deleteDispense={deleteDispense} toast={toast} canWrite={canWrite} isAdmin={isAdmin} />} />
               <Route path="/make-bill" element={<MakeBill medicines={medicines} bills={bills} profile={profile} createBill={addBill} toast={toast} canWrite={canWrite} />} />
+              <Route path="/pos" element={<PointOfSale medicines={medicines} profile={profile} createBill={addBill} toast={toast} />} />
               <Route path="/profile" element={<Profile profile={profile} updateProfileApi={handleUpdateProfile} toast={toast} />} />
               <Route path="/contact-us" element={<ContactUs />} />
             </Routes>

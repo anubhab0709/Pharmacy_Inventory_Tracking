@@ -13,10 +13,11 @@ const NAV = [
   {iconName:"calendar",  label:"Expiry Tracker", path:"/expiry-tracker"},
   {iconName:"box",       label:"Stock Tracker", path:"/stock-tracker"},
   {iconName:"stockout",  label:"Stock Out", path:"/stock-out"},
+  {iconName:"pos",       label:"Point of Sale", path: "/pos"},
   {iconName:"receipt",   label:"Make Bill", path:"/make-bill"},
 ];
 
-export default function Sidebar({ profile = {}, medicines = [], user }) {
+export default function Sidebar({ profile = {}, medicines = [], user, onClose }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useAuth();
@@ -33,8 +34,13 @@ export default function Sidebar({ profile = {}, medicines = [], user }) {
 
   return (
     <aside style={{width:236,padding:"18px 14px",background:C.surface,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",gap:4,overflowY:"auto",flexShrink:0,boxShadow:"2px 0 10px rgba(0,0,0,0.02)"}}>
-      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24,padding:"0 10px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:24,padding:"0 10px"}}>
         <BrandLogo size={28} textSize={16} />
+        {onClose && (
+          <button onClick={onClose} style={{background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:4}}>
+            <Icon name="close" size={20} color={C.muted} />
+          </button>
+        )}
       </div>
 
       {NAV.map(({iconName,label,path},i)=>{

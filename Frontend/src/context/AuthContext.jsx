@@ -62,12 +62,11 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     (async () => {
       try {
-        const data = await bootstrapSession();
-        const user = data?.user || data?.data?.user || data?.data;
+        const refreshData = await bootstrapSession();
+        if (!refreshData?.accessToken) throw new Error("No session");
 
-        if (mountedRef.current && user) {
-          setUser(user);
-        }
+        const me = await getMe();
+        if (mountedRef.current) setUser(me);
       } catch {
         if (mountedRef.current) clearSession();
       } finally {
@@ -109,8 +108,8 @@ export function AuthProvider({ children }) {
     return me;
   };
 
-  const canWrite = user?.role === "admin" || user?.role === "pharmacist";
-  const isAdmin = user?.role === "admin";
+  const canWrite = !!user;
+  const isAdmin = !!user;
 
   return (
     <AuthContext.Provider

@@ -42,15 +42,15 @@ const glowStyle = (color, x, y) => ({
 
 const cardStyle = {
   width: "100%",
-  maxWidth: 540,
+  maxWidth: 560,
   background: C.surface,
   border: `1px solid ${C.border}`,
   borderRadius: 24,
-  padding: "44px 42px",
+  padding: "34px 38px",
   boxShadow: "0 24px 70px rgba(0,0,0,0.10)",
   position: "relative",
   zIndex: 1,
-  maxHeight: "92vh",
+  maxHeight: "96vh",
   overflowY: "auto",
 };
 
@@ -59,7 +59,7 @@ const toggleWrap = {
   background: C.surfaceHover,
   borderRadius: 16,
   padding: 4,
-  marginBottom: 24,
+  marginBottom: 18,
   border: `1px solid ${C.border}`,
   position: "relative",
   overflow: "hidden",
@@ -67,7 +67,7 @@ const toggleWrap = {
 
 const toggleBtn = (active) => ({
   flex: 1,
-  padding: "12px 16px",
+  padding: "11px 16px",
   borderRadius: 12,
   border: "none",
   cursor: "pointer",
@@ -83,7 +83,7 @@ const toggleBtn = (active) => ({
 
 const otpInputStyle = {
   width: "100%",
-  padding: "14px 16px",
+  padding: "13px 16px",
   borderRadius: 10,
   border: `1px solid ${C.border}`,
   background: C.surface,
@@ -94,6 +94,12 @@ const otpInputStyle = {
   textAlign: "center",
   fontFamily: "'Inter',sans-serif",
   outline: "none",
+};
+
+const gridTwoCol = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 14,
 };
 
 const emptySignupForm = {
@@ -130,9 +136,22 @@ export default function Login() {
   const [info, setInfo] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Splash screen state
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashFading, setSplashFading] = useState(false);
+
   const canSignup = allowPublicSignup || needsSetup;
 
   const isSignup = mode === "signup" && canSignup;
+
+  useEffect(() => {
+    const fadeTimer = setTimeout(() => setSplashFading(true), 1300);
+    const removeTimer = setTimeout(() => setShowSplash(false), 1850);
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(removeTimer);
+    };
+  }, []);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
@@ -147,11 +166,8 @@ export default function Login() {
 
         setAllowPublicSignup(data.allowPublicSignup !== false);
 
-        if (data.needsSetup) {
-          setMode("signup");
-        } else {
-          setMode("signin");
-        }
+        // Always default to sign-in; user can toggle to Sign Up manually.
+        setMode("signin");
       })
 
       .catch(() => setError("Cannot reach server. Is the backend running?"))
@@ -162,8 +178,8 @@ export default function Login() {
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const switchMode = (next) => {
-    if (next === "signup" && !allowPublicSignup && !needsSetup) {
-      return; // 🚫 block signup completely
+    if (next === "signup" && !canSignup) {
+      return; // 🚫 block signup completely when it's not allowed
     }
 
     setMode(next);
@@ -180,10 +196,10 @@ export default function Login() {
   };
 
   useEffect(() => {
-    if (!allowPublicSignup && !needsSetup && mode === "signup") {
+    if (!canSignup && mode === "signup") {
       setMode("signin");
     }
-  }, [allowPublicSignup, needsSetup, mode]);
+  }, [canSignup, mode]);
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
@@ -279,36 +295,128 @@ export default function Login() {
 
   return (
     <div style={pageStyle}>
+      <style>{`
+        @keyframes pcSplashLogoIn {
+          0% { transform: scale(0.5) rotate(-8deg); opacity: 0; }
+          60% { transform: scale(1.08) rotate(2deg); opacity: 1; }
+          100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        @keyframes pcSplashTextIn {
+          0% { opacity: 0; transform: translateY(14px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pcSplashRing {
+          0% { transform: scale(1); opacity: 0.55; }
+          100% { transform: scale(2.1); opacity: 0; }
+        }
+        .pc-splash-screen {
+          position: fixed;
+          inset: 0;
+          background: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-direction: column;
+          z-index: 9999;
+          opacity: 1;
+          transition: opacity 0.5s ease;
+        }
+        .pc-splash-fade-out {
+          opacity: 0;
+          pointer-events: none;
+        }
+        .pc-splash-logo-wrap {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 22px;
+        }
+        .pc-splash-ring {
+          position: absolute;
+          width: 92px;
+          height: 92px;
+          border-radius: 50%;
+          border: 2px solid rgba(37,99,235,0.35);
+          animation: pcSplashRing 1.8s ease-out infinite;
+        }
+        .pc-splash-logo {
+          animation: pcSplashLogoIn 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        }
+        .pc-splash-title {
+          font-family: 'Inter', sans-serif;
+          font-size: 34px;
+          font-weight: 800;
+          color: #0f172a;
+          letter-spacing: -0.02em;
+          animation: pcSplashTextIn 0.7s ease 0.35s both;
+        }
+        .pc-splash-subtitle {
+          font-family: 'Inter', sans-serif;
+          font-size: 14px;
+          color: #64748b;
+          margin-top: 6px;
+          animation: pcSplashTextIn 0.7s ease 0.55s both;
+        }
+        .pc-grid-2 {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 14px;
+        }
+        @media (max-width: 480px) {
+          .pc-grid-2 {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+
+      {showSplash && (
+        <div
+          className={`pc-splash-screen ${splashFading ? "pc-splash-fade-out" : ""}`}
+        >
+          <div className="pc-splash-logo-wrap">
+            <div className="pc-splash-ring" />
+            <div className="pc-splash-logo">
+              <BrandLogo size={64} showText={false} />
+            </div>
+          </div>
+          <div className="pc-splash-title">PharmaCare</div>
+          <div className="pc-splash-subtitle">
+            Pharmacy Inventory Management
+          </div>
+        </div>
+      )}
+
       <div style={glowStyle("rgba(37,99,235,0.15)", "-10%", "-20%")} />
       <div style={glowStyle("rgba(16,185,129,0.12)", "60%", "50%")} />
 
       <div style={cardStyle}>
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
+        <div style={{ textAlign: "center", marginBottom: 20 }}>
           <div
             style={{
               display: "flex",
               justifyContent: "center",
-              marginBottom: 14,
+              marginBottom: 12,
             }}
           >
-            <BrandLogo size={52} showText={false} />
+            <BrandLogo size={48} showText={false} />
           </div>
           <h1
             style={{
               fontFamily: "'Inter',sans-serif",
-              fontSize: 30,
+              fontSize: 28,
               fontWeight: 800,
               color: C.text,
-              margin: "0 0 8px",
+              margin: "0 0 6px",
               letterSpacing: "-0.02em",
             }}
           >
             PharmaCare
           </h1>
           <p
-            style={{ color: C.muted, fontSize: 15, margin: 0, lineHeight: 1.5 }}
+            style={{ color: C.muted, fontSize: 14, margin: 0, lineHeight: 1.5 }}
           >
-            {needsSetup
+            {needsSetup && mode === "signup"
               ? "Register your pharmacy"
               : isSignup
                 ? signupStep === "otp"
@@ -318,7 +426,7 @@ export default function Login() {
           </p>
         </div>
 
-        {!needsSetup && allowPublicSignup && (
+        {canSignup && (
           <div style={toggleWrap}>
             <div
               style={{
@@ -329,9 +437,7 @@ export default function Login() {
                 background: C.surface,
                 boxShadow: "0 8px 18px rgba(15,23,42,0.08)",
                 transform:
-                  mode === "signup"
-                    ? "translateX(calc(100% + 4px))"
-                    : "translateX(0)",
+                  mode === "signup" ? "translateX(100%)" : "translateX(0)",
                 transition: "transform 220ms ease",
               }}
             />
@@ -359,8 +465,8 @@ export default function Login() {
               border: "1px solid rgba(245,130,32,0.2)",
               borderRadius: 10,
               padding: "10px 14px",
-              marginBottom: 16,
-              fontSize: 14,
+              marginBottom: 14,
+              fontSize: 13,
               color: C.muted,
               textAlign: "center",
               lineHeight: 1.5,
@@ -370,17 +476,17 @@ export default function Login() {
           </div>
         )}
 
-        {needsSetup && (
+        {needsSetup && mode === "signup" && (
           <div
             style={{
               background: "rgba(37,99,235,0.06)",
               border: "1px solid rgba(37,99,235,0.15)",
               borderRadius: 10,
-              padding: "12px 16px",
-              marginBottom: 20,
-              fontSize: 14,
+              padding: "10px 14px",
+              marginBottom: 16,
+              fontSize: 13,
               color: C.muted,
-              lineHeight: 1.6,
+              lineHeight: 1.5,
               textAlign: "center",
             }}
           >
@@ -391,40 +497,44 @@ export default function Login() {
         {mode === "signup" && canSignup && signupStep === "details" && (
           <form
             onSubmit={handleSendOtp}
-            style={{ display: "flex", flexDirection: "column", gap: 18 }}
+            style={{ display: "flex", flexDirection: "column", gap: 14 }}
           >
-            <FInput
-              label="Shop / Pharmacy Name"
-              required
-              value={form.shopName}
-              onChange={(e) => set("shopName", e.target.value)}
-              placeholder="e.g. City Care Pharmacy"
-            />
-            <FInput
-              label="Owner Name"
-              required
-              value={form.ownerName}
-              onChange={(e) => set("ownerName", e.target.value)}
-              placeholder="e.g. Dr. Rajesh Kumar"
-            />
-            <FInput
-              label="Email"
-              required
-              type="email"
-              value={form.email}
-              onChange={(e) => set("email", e.target.value)}
-              placeholder="pharmacy@email.com"
-              autoComplete="email"
-            />
-            <FInput
-              label="Phone Number"
-              required
-              type="tel"
-              value={form.phone}
-              onChange={(e) => set("phone", e.target.value)}
-              placeholder="+91 98765 43210"
-              autoComplete="tel"
-            />
+            <div className="pc-grid-2">
+              <FInput
+                label="Shop / Pharmacy Name"
+                required
+                value={form.shopName}
+                onChange={(e) => set("shopName", e.target.value)}
+                placeholder="e.g. City Care Pharmacy"
+              />
+              <FInput
+                label="Owner Name"
+                required
+                value={form.ownerName}
+                onChange={(e) => set("ownerName", e.target.value)}
+                placeholder="e.g. Dr. Rajesh Kumar"
+              />
+            </div>
+            <div className="pc-grid-2">
+              <FInput
+                label="Email"
+                required
+                type="email"
+                value={form.email}
+                onChange={(e) => set("email", e.target.value)}
+                placeholder="pharmacy@email.com"
+                autoComplete="email"
+              />
+              <FInput
+                label="Phone Number"
+                required
+                type="tel"
+                value={form.phone}
+                onChange={(e) => set("phone", e.target.value)}
+                placeholder="+91 98765 43210"
+                autoComplete="tel"
+              />
+            </div>
             <FInput
               label="Password"
               required
@@ -442,7 +552,7 @@ export default function Login() {
               style={{
                 width: "100%",
                 justifyContent: "center",
-                padding: "13px 20px",
+                padding: "12px 20px",
               }}
               disabled={submitting}
             >
@@ -454,7 +564,7 @@ export default function Login() {
         {mode === "signup" && signupStep === "otp" && (
           <form
             onSubmit={handleVerifyOtp}
-            style={{ display: "flex", flexDirection: "column", gap: 16 }}
+            style={{ display: "flex", flexDirection: "column", gap: 14 }}
           >
             <p
               style={{
@@ -489,7 +599,7 @@ export default function Login() {
               style={{
                 width: "100%",
                 justifyContent: "center",
-                padding: "13px 20px",
+                padding: "12px 20px",
               }}
               disabled={submitting || otp.length !== 6}
             >
@@ -540,7 +650,7 @@ export default function Login() {
         {mode === "signin" && (
           <form
             onSubmit={handleSignIn}
-            style={{ display: "flex", flexDirection: "column", gap: 18 }}
+            style={{ display: "flex", flexDirection: "column", gap: 16 }}
           >
             <FInput
               label="Email"
@@ -567,7 +677,7 @@ export default function Login() {
               style={{
                 width: "100%",
                 justifyContent: "center",
-                padding: "13px 20px",
+                padding: "12px 20px",
               }}
               disabled={submitting}
             >
@@ -577,7 +687,7 @@ export default function Login() {
               style={{
                 display: "flex",
                 justifyContent: "center",
-                marginTop: 8,
+                marginTop: 6,
               }}
             >
               <button
@@ -608,7 +718,7 @@ export default function Login() {
           (forgotStep === "request" ? (
             <form
               onSubmit={handleRequestReset}
-              style={{ display: "flex", flexDirection: "column", gap: 16 }}
+              style={{ display: "flex", flexDirection: "column", gap: 14 }}
             >
               <FInput
                 label="Email"
@@ -640,7 +750,7 @@ export default function Login() {
           ) : (
             <form
               onSubmit={handleResetPassword}
-              style={{ display: "flex", flexDirection: "column", gap: 16 }}
+              style={{ display: "flex", flexDirection: "column", gap: 14 }}
             >
               <p style={{ fontSize: 13, color: C.muted }}>
                 Enter the code sent to{" "}
@@ -687,11 +797,11 @@ export default function Login() {
             </form>
           ))}
 
-        {!needsSetup && allowPublicSignup && signupStep === "details" && (
+        {canSignup && signupStep === "details" && mode !== "forgot" && (
           <p
             style={{
               textAlign: "center",
-              marginTop: 22,
+              marginTop: 18,
               fontSize: 13,
               color: C.muted,
             }}
