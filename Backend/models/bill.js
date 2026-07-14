@@ -22,6 +22,9 @@ const billSchema = new mongoose.Schema(
     pharmacyEmail: { type: String, default: "" },
     items: { type: [billItemSchema], default: [] },
     subtotal: { type: Number, required: true, default: 0 },
+    cgstAmount: { type: Number, default: 0 },
+    sgstAmount: { type: Number, default: 0 },
+    taxAmount: { type: Number, default: 0 },
     grandTotal: { type: Number, required: true, default: 0 },
     date: { type: Date, default: Date.now },
     notes: { type: String, default: "" },
@@ -29,6 +32,6 @@ const billSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-billSchema.index({ ownerId: 1, billNo: 1 });
+billSchema.index({ ownerId: 1, billNo: 1 }, { unique: true });
 
 export default mongoose.model("Bill", billSchema);

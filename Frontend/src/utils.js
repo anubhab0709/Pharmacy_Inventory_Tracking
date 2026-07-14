@@ -1,4 +1,6 @@
 import { C } from './theme';
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export const getDaysToExpiry = (d) => {
   const diff = Math.ceil((new Date(d) - new Date()) / 86400000);
@@ -22,7 +24,11 @@ export const getStockStatus = (q, t) => {
 };
 
 export const fmtDate = d => new Date(d).toLocaleDateString("en-IN", {day:"2-digit",month:"short",year:"numeric"});
-export const fmtCurrency = n => `₹${Number(n).toFixed(2)}`;
+export const fmtCurrency = (n) => {
+  const value = Number(n);
+  if (!Number.isFinite(value)) return "₹0.00";
+  return `₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
 
 export function escapeCsvValue(value) {
   const normalized = String(value ?? "").replace(/\r\n|\r|\n/g, " ");
@@ -45,13 +51,16 @@ export function buildCsvContent(rows = [], columns = []) {
   return `\uFEFF${[header, body].join("\n")}`;
 }
 
-export function buildPrintableReportHtml({ title, subtitle, rows = [], columns = [], filename = "report" }) {
-  const escapeHtml = (value) => String(value ?? "")
+export function escapeHtml(value) {
+  return String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
+    .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+export function buildPrintableReportHtml({ title, subtitle, rows = [], columns = [], filename = "report" }) {
 
   const exportColumns = columns.length
     ? columns
@@ -121,25 +130,62 @@ function normalizeExportInput(dataOrOptions, maybeFilename) {
 
 export function exportCSV(dataOrOptions, maybeFilename) {
   const { rows, filename, columns } = normalizeExportInput(dataOrOptions, maybeFilename);
-  if (!rows.length) return;
+  if (!rows.length) {
+    if (typeof window !== "undefined") {
+      console.warn("CSV export skipped: no rows");
+    }
+    return false;
+  }
 
   const csv = buildCsvContent(rows, columns);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-  a.download = filename;
+  a.download = filename.endsWith(".csv") ? filename : `${filename}.csv`;
   a.click();
+  return true;
 }
 
 export function exportPDF(dataOrOptions) {
-  const { rows, filename, columns, title, subtitle } = dataOrOptions || {};
-  if (typeof window === "undefined" || !rows?.length) return;
+  const options = dataOrOptions || {};
+  const rows = options.rows || [];
+  const columns = options.columns?.length
+    ? options.columns
+    : Object.keys(rows[0] || {}).map((key) => ({ label: key, key }));
+  const title = options.title || "Report";
+  const subtitle = options.subtitle || "";
+  const filename = String(options.filename || "report").replace(/\.pdf$/i, "");
 
-  const opened = window.open("", "_blank", "noopener,noreferrer,width=1200,height=900");
-  if (!opened) return;
+  if (typeof window === "undefined" || !rows.length) return;
 
-  opened.document.open();
-  opened.document.write(buildPrintableReportHtml({ title, subtitle, rows, columns, filename }));
-  opened.document.close();
-  opened.focus();
-  opened.print();
+  const doc = new jsPDF({ unit: "pt", format: "a4", orientation: "landscape" });
+  const margin = 40;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(15, 23, 42);
+  doc.text(title, margin, 40);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(100, 116, 139);
+  if (subtitle) doc.text(subtitle, margin, 58);
+  doc.text(`Generated: ${new Date().toLocaleString("en-IN")}`, margin, subtitle ? 74 : 58);
+  doc.text(`${rows.length} records`, doc.internal.pageSize.getWidth() - margin, 40, { align: "right" });
+
+  autoTable(doc, {
+    startY: subtitle ? 92 : 78,
+    head: [columns.map((c) => c.label)],
+    body: rows.map((row) =>
+      columns.map((column) => {
+        const raw = column.format ? column.format(row) : row[column.key];
+        return String(raw ?? "").replace(/₹/g, "Rs ");
+      })
+    ),
+    styles: { fontSize: 8, cellPadding: 5, overflow: "linebreak", textColor: [15, 23, 42] },
+    headStyles: { fillColor: [15, 118, 110], textColor: 255, fontStyle: "bold", fontSize: 8 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    margin: { left: margin, right: margin },
+  });
+
+  doc.save(`${filename}.pdf`);
 }

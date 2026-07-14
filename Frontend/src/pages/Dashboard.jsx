@@ -39,14 +39,25 @@ function MiniList({ title, sub, items, emptyMsg, onViewAll, renderRow }) {
 
 export default function Dashboard({ medicines = [], disposals = [], navigate }) {
   const totalStock = medicines.reduce((s,m)=>s+(m.quantity||0),0);
-  const lowStock   = medicines.filter(m=>(m.quantity||0)<=(m.threshold||0) && (m.quantity||0)>0).length;
-  const outOfStock = medicines.filter(m=>(m.quantity||0)===0).length;
-  const expSoon    = medicines.filter(m=>{const d=getDaysToExpiry(m.expiryDate);return d>=0&&d<=30;}).length;
-  const expired    = medicines.filter(m=>getDaysToExpiry(m.expiryDate)<0).length;
-  const inStock    = medicines.filter(m=>{
-    const q=m.quantity||0; const t=m.threshold||0;
-    return q>0 && q>t && getDaysToExpiry(m.expiryDate)>30;
-  }).length;
+
+  // Stock buckets (exclusive by quantity — restock/edit always move these bars)
+  let outOfStock = 0, lowStock = 0, inStock = 0, expired = 0, expSoon = 0;
+  medicines.forEach((m) => {
+    const days = getDaysToExpiry(m.expiryDate);
+    const q = m.quantity || 0;
+    const t = m.threshold || 20;
+    if (days < 0) expired += 1;
+    else if (days <= 30) expSoon += 1;
+
+    if (q === 0) outOfStock += 1;
+    else if (q <= t) lowStock += 1;
+    else inStock += 1;
+  });
+
+  // Alert banners use overlapping counts (a medicine can be low AND expiring)
+  const lowStockAlert = medicines.filter(m=>(m.quantity||0)<=(m.threshold||20) && (m.quantity||0)>0).length;
+  const expSoonAlert = medicines.filter(m=>{const d=getDaysToExpiry(m.expiryDate);return d>=0&&d<=30;}).length;
+  const outOfStockAlert = medicines.filter(m=>(m.quantity||0)===0).length;
   const totalValue = medicines.reduce((s,m)=>s+(m.quantity||0)*(m.price||0),0);
   const recentDisposals = [...disposals].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,5);
 
@@ -57,13 +68,19 @@ export default function Dashboard({ medicines = [], disposals = [], navigate }) 
     return dk === todayKey;
   }).reduce((sum, d) => sum + (d.quantity || 0), 0);
 
+  // Stock bars only — expiry shown in banners / Expiry Alerts card
   const healthData = [
     { name:"In Stock", value:inStock, color:C.teal },
     { name:"Low Stock", value:lowStock, color:C.orange },
     { name:"Out of Stock", value:outOfStock, color:C.red },
-    { name:"Expiring", value:expSoon, color:C.yellow },
+  ].filter(d=>d.value>0);
+
+  const expiryData = [
+    { name:"Expiring ≤30d", value:expSoon, color:C.yellow },
     { name:"Expired", value:expired, color:"#991b1b" },
   ].filter(d=>d.value>0);
+
+  const chartKey = `stock-${inStock}-${lowStock}-${outOfStock}-exp-${expSoon}-${expired}-n-${medicines.length}-q-${totalStock}`;
 
   const last7Days = Array.from({length:7},(_,i)=>{
     const d=new Date();
@@ -83,7 +100,7 @@ export default function Dashboard({ medicines = [], disposals = [], navigate }) 
     .slice(0,5);
 
   const lowStockItems = [...medicines]
-    .filter(m=>(m.quantity||0)<=(m.threshold||10))
+    .filter(m=>(m.quantity||0)<=(m.threshold||20))
     .sort((a,b)=>(a.quantity||0)-(b.quantity||0))
     .slice(0,5);
 
@@ -141,29 +158,29 @@ export default function Dashboard({ medicines = [], disposals = [], navigate }) 
           <Btn key="pdf" variant="primary" icon="download" onClick={handleExportPdf}>Export PDF</Btn>
         ]}
       />
-      {(expired>0||expSoon>0||lowStock>0||outOfStock>0)&&(
+      {(expired>0||expSoonAlert>0||lowStockAlert>0||outOfStockAlert>0)&&(
         <div style={{display:"flex",gap:12,marginBottom:20,flexWrap:"wrap"}}>
           {expired>0 &&<AlertBanner iconName="alertcircle" color={C.red}    title={`${expired} Medicine${expired>1?"s":""} Expired`}          sub="Remove from shelf immediately"   onView={()=>goToExpiry("expired")}/>}
-          {expSoon>0 &&<AlertBanner iconName="clock"       color={C.orange} title={`${expSoon} Expiring within 30 days`}                       sub="Plan disposal or return"          onView={()=>goToExpiry("critical")}/>}
-          {lowStock>0&&<AlertBanner iconName="trenddown"   color={C.yellow} title={`${lowStock} Low Stock Alert${lowStock>1?"s":""}`}           sub="Below minimum threshold"         onView={()=>goToStock("low")}/>}
-          {outOfStock>0&&<AlertBanner iconName="ban"        color={C.red}    title={`${outOfStock} Out of Stock`}                              sub="Restock immediately"            onView={()=>goToStock("low")}/>}
+          {expSoonAlert>0 &&<AlertBanner iconName="clock"       color={C.orange} title={`${expSoonAlert} Expiring within 30 days`}                       sub="Plan disposal or return"          onView={()=>goToExpiry("critical")}/>}
+          {lowStockAlert>0&&<AlertBanner iconName="trenddown"   color={C.yellow} title={`${lowStockAlert} Low Stock Alert${lowStockAlert>1?"s":""}`}           sub="Below minimum threshold"         onView={()=>goToStock("low")}/>}
+          {outOfStockAlert>0&&<AlertBanner iconName="ban"        color={C.red}    title={`${outOfStockAlert} Out of Stock`}                              sub="Restock immediately"            onView={()=>goToStock("low")}/>}
         </div>
       )}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(185px,1fr))",gap:14,marginBottom:22}}>
-        <StatCard title="Total Medicines" value={medicines.length}                      sub={`${outOfStock} out of stock`} accent={C.teal}   iconName="pill"       delay={0.04} onClick={()=>goTo("/medicines")} ariaLabel="Open medicines list"/>
+        <StatCard title="Total Medicines" value={medicines.length}                      sub={`${outOfStockAlert} out of stock`} accent={C.teal}   iconName="pill"       delay={0.04} onClick={()=>goTo("/medicines")} ariaLabel="Open medicines list"/>
         <StatCard title="Total Stock"     value={totalStock.toLocaleString()}           sub="Units in inventory"      accent={C.purple} iconName="box"        delay={0.07} onClick={()=>goToStock("all")} ariaLabel="Open stock tracker"/>
-        <StatCard title="Stock Value"     value={`₹${(totalValue/1000).toFixed(1)}K`}  sub="Total inventory worth"   accent={C.green}  iconName="coins"      delay={0.10} onClick={()=>goToStock("in-stock")} ariaLabel="Open stocked medicines"/>
+        <StatCard title="Stock Value"     value={fmtCurrency(totalValue)}  sub="Total inventory worth"   accent={C.green}  iconName="coins"      delay={0.10} onClick={()=>goToStock("in-stock")} ariaLabel="Open stocked medicines"/>
         <StatCard title="Disposed Today"  value={disposedToday}                         sub="Units disposed today"    accent={C.orange} iconName="alertcircle" delay={0.13} onClick={()=>goTo("/expired-medicines")} ariaLabel="Open expired medicines"/>
-        <StatCard title="Expiry Alerts"   value={expSoon+expired}                       sub="Within 30 days / expired"accent={C.red}    iconName="clock"      delay={0.16} onClick={()=>goToExpiry("critical")} ariaLabel="Open expiry tracker"/>
+        <StatCard title="Expiry Alerts"   value={expSoonAlert+expired}                       sub="Within 30 days / expired"accent={C.red}    iconName="clock"      delay={0.16} onClick={()=>goToExpiry("critical")} ariaLabel="Open expiry tracker"/>
       </div>
 
       <div style={{display:"grid",gridTemplateColumns:"1.2fr 1fr",gap:18,marginBottom:18}}>
         <Card>
           <p style={{fontFamily:"'Inter',sans-serif",fontSize:16,fontWeight:700,color:C.text,margin:"0 0 2px"}}>Inventory Health Status</p>
-          <p style={{color:C.muted,fontSize:12,marginBottom:16}}>Stock and expiry breakdown — act on alerts fast</p>
+          <p style={{color:C.muted,fontSize:12,marginBottom:16}}>Stock levels (updates when you restock or edit){expiryData.length ? ` · ${expired} expired · ${expSoon} expiring` : ""}</p>
           {healthData.length===0
             ? <p style={{color:C.dim,textAlign:"center",padding:"60px 0",fontSize:13}}>No medicines in inventory yet</p>
-            : <ResponsiveContainer width="100%" height={220}>
+            : <ResponsiveContainer width="100%" height={220} key={chartKey}>
               <BarChart data={healthData} barCategoryGap="25%">
                 <XAxis dataKey="name" tick={{fill:C.dim,fontSize:10}} axisLine={false} tickLine={false}/>
                 <YAxis tick={{fill:C.dim,fontSize:10}} axisLine={false} tickLine={false} allowDecimals={false}/>

@@ -353,13 +353,14 @@ export async function resetPassword(req, res, next) {
       return res.status(400).json({ success: false, message: "Invalid reset code" });
     }
 
-    const user = await User.findOne({ email }).select("+passwordHash");
+    const user = await User.findOne({ email }).select("+passwordHash +refreshTokenHash");
     if (!user) {
       await PendingPasswordReset.deleteOne({ _id: pending._id });
       return res.status(400).json({ success: false, message: "No account found for this email" });
     }
 
     user.passwordHash = await User.hashPassword(password);
+    user.refreshTokenHash = undefined;
     await user.save();
     await PendingPasswordReset.deleteOne({ _id: pending._id });
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { C, CATEGORIES } from '../theme';
@@ -6,6 +6,13 @@ import { FInput, FSelect, Btn, Icon } from '../components/SharedUI';
 
 const AddMedicine = ({ onAdd }) => {
   const navigate = useNavigate();
+  const [isNarrow, setIsNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const onChange = (e) => setIsNarrow(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -15,14 +22,17 @@ const AddMedicine = ({ onAdd }) => {
     batchNumber: '',
     barcode: '',
     price: '',
-    threshold: '20'
+    threshold: '20',
+    cgst: '',
+    sgst: '',
+    hsnCode: ''
   });
   const [newCategory, setNewCategory] = useState('');
   const [loading, setLoading] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
-  
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const scanningRef = useRef(false);
 
   const categories = [...CATEGORIES, 'Add new category'];
 
@@ -41,8 +51,9 @@ const AddMedicine = ({ onAdd }) => {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
+        scanningRef.current = true;
         setIsCameraActive(true);
-        scanFrame();
+        requestAnimationFrame(scanFrame);
       }
     } catch (err) {
       toast.error("Failed to access camera");
@@ -50,6 +61,7 @@ const AddMedicine = ({ onAdd }) => {
   };
 
   const stopCamera = () => {
+    scanningRef.current = false;
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -58,7 +70,7 @@ const AddMedicine = ({ onAdd }) => {
   };
 
   const scanFrame = async () => {
-    if (!videoRef.current || !streamRef.current) return;
+    if (!scanningRef.current || !videoRef.current || !streamRef.current) return;
     try {
       const barcodeDetector = new window.BarcodeDetector({ formats: ['qr_code', 'ean_13', 'code_128', 'upc_a'] });
       const barcodes = await barcodeDetector.detect(videoRef.current);
@@ -67,32 +79,35 @@ const AddMedicine = ({ onAdd }) => {
         stopCamera();
         setFormData(prev => ({ ...prev, barcode: code }));
         toast.success("Barcode scanned successfully!");
-      } else {
-        if (isCameraActive) requestAnimationFrame(scanFrame);
+      } else if (scanningRef.current) {
+        requestAnimationFrame(scanFrame);
       }
     } catch (err) {
-      if (isCameraActive) requestAnimationFrame(scanFrame);
+      if (scanningRef.current) requestAnimationFrame(scanFrame);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const finalCategory = formData.category === 'Add new category' ? newCategory : formData.category;
+    const finalCategory = formData.category === 'Add new category' ? newCategory.trim() : formData.category;
 
-    if (!formData.name || !finalCategory || !formData.quantity || !formData.price || !formData.expiryDate) {
+    if (!formData.name.trim() || !finalCategory || finalCategory === 'Select category' || formData.quantity === '' || formData.price === '' || !formData.expiryDate) {
       toast.error('Please fill in all required fields (Name, Category, Quantity, Price, Expiry)');
       return;
     }
-
-    if (parseInt(formData.quantity) < 0) {
-      toast.error('Quantity cannot be negative');
+    if (parseInt(formData.quantity, 10) < 0 || Number(formData.price) < 0) {
+      toast.error('Quantity and price cannot be negative');
+      return;
+    }
+    if (new Date(formData.expiryDate) < new Date(new Date().toDateString())) {
+      toast.error('Expiry date cannot be in the past');
       return;
     }
 
     try {
       setLoading(true);
       const payload = {
-        name: formData.name,
+        name: formData.name.trim(),
         category: finalCategory,
         quantity: parseInt(formData.quantity, 10),
         batchNumber: formData.batchNumber,
@@ -100,26 +115,29 @@ const AddMedicine = ({ onAdd }) => {
         expiryDate: formData.expiryDate,
         barcode: formData.barcode,
         price: Number(formData.price),
-        threshold: Number(formData.threshold) || 0
+        threshold: Number(formData.threshold) || 20,
+        cgst: Number(formData.cgst) || 0,
+        sgst: Number(formData.sgst) || 0,
+        hsnCode: formData.hsnCode || '',
       };
       
       if (onAdd) await onAdd(payload);
       toast.success('Medicine added successfully!');
       navigate('/medicines');
     } catch (error) {
-      toast.error('Failed to add medicine');
+      toast.error(error.message || 'Failed to add medicine');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(6px)', zIndex: 1000, padding: 24 }}>
+    <div style={{ position: 'fixed', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(6px)', zIndex: 1000, padding: isNarrow ? 0 : 24 }}>
       
-      <div style={{ width: '70%', height: '80vh', background: C.surface, borderRadius: 24, display: 'flex', overflow: 'hidden', boxShadow: '0 24px 50px rgba(0,0,0,0.2)', position: 'relative', animation: 'fadeUp 0.25s ease' }}>
+      <div style={{ width: isNarrow ? '100%' : '70%', maxWidth: isNarrow ? '100%' : undefined, height: isNarrow ? '100%' : '80vh', background: C.surface, borderRadius: isNarrow ? 0 : 24, display: 'flex', flexDirection: isNarrow ? 'column' : 'row', overflow: 'hidden', boxShadow: '0 24px 50px rgba(0,0,0,0.2)', position: 'relative', animation: 'fadeUp 0.25s ease' }}>
         
         {/* Left Branding Pane */}
-        <div style={{ width: '30%', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', color: '#fff', padding: 40, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ width: isNarrow ? '100%' : '30%', display: isNarrow ? 'none' : 'flex', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', color: '#fff', padding: 40, flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: -40, right: -60, opacity: 0.05, transform: 'rotate(-15deg)' }}>
             <Icon name="pill" size={280} color="#fff" />
           </div>
@@ -149,7 +167,7 @@ const AddMedicine = ({ onAdd }) => {
             
             <div>
               <h4 style={{ margin: '0 0 16px 0', fontSize: 12, color: C.teal, textTransform: 'uppercase', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}><Icon name="pill" size={14} /> Basic Information</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr', gap: 20 }}>
                 <FInput label="Medicine Name" type="text" name="name" value={formData.name} onChange={handleChange} placeholder="e.g. Paracetamol 500mg" required />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <FSelect label="Category" name="category" value={formData.category} onChange={handleChange} required options={['Select category', ...categories]} />
@@ -166,11 +184,22 @@ const AddMedicine = ({ onAdd }) => {
 
             <div>
               <h4 style={{ margin: '0 0 16px 0', fontSize: 12, color: C.teal, textTransform: 'uppercase', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}><Icon name="box" size={14} /> Stock & Tracking</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr 1fr', gap: 20 }}>
                 <FInput label="Initial Quantity" type="number" name="quantity" value={formData.quantity} onChange={handleChange} placeholder="0" min="0" required />
                 <FInput label="Low Stock Threshold" type="number" name="threshold" value={formData.threshold} onChange={handleChange} placeholder="20" min="0" />
                 <FInput label="Batch Number" type="text" name="batchNumber" value={formData.batchNumber} onChange={handleChange} placeholder="e.g. BATCH-001" />
                 <FInput label="Expiry Date" type="date" name="expiryDate" value={formData.expiryDate} onChange={handleChange} required />
+              </div>
+            </div>
+
+            <hr style={{ border: 'none', borderTop: `1px dashed ${C.border}`, margin: 0 }} />
+
+            <div>
+              <h4 style={{ margin: '0 0 16px 0', fontSize: 12, color: C.teal, textTransform: 'uppercase', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}><Icon name="receipt" size={14} /> Tax Details</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '1fr 1fr 1fr', gap: 20 }}>
+                <FInput label="CGST (%)" type="number" name="cgst" value={formData.cgst} onChange={handleChange} min="0" max="100" step="0.01" placeholder="e.g. 6" />
+                <FInput label="SGST (%)" type="number" name="sgst" value={formData.sgst} onChange={handleChange} min="0" max="100" step="0.01" placeholder="e.g. 6" />
+                <FInput label="HSN Code" type="text" name="hsnCode" value={formData.hsnCode} onChange={handleChange} placeholder="e.g. 3004" />
               </div>
             </div>
 
@@ -183,7 +212,7 @@ const AddMedicine = ({ onAdd }) => {
                   <FInput label="Barcode (Optional)" type="text" name="barcode" value={formData.barcode} onChange={handleChange} placeholder="Scan or enter barcode manually" />
                 </div>
                 <Btn type="button" variant="secondary" onClick={startCamera} style={{ height: 42, marginBottom: 2 }}>
-                  <Icon name="barcode" size={18} /> Add medichine using barcode
+                  <Icon name="barcode" size={18} /> Scan barcode
                 </Btn>
               </div>
 
@@ -203,7 +232,7 @@ const AddMedicine = ({ onAdd }) => {
 
           {/* Footer Actions */}
           <div style={{ padding: '20px 32px', borderTop: `1px solid ${C.border}`, display: 'flex', gap: 12, justifyContent: 'flex-end', background: '#f8fafc' }}>
-            <Btn type="button" variant="ghost" onClick={() => navigate('/medicines')}>Cancel</Btn>
+            <Btn type="button" variant="danger" onClick={() => navigate('/medicines')}>Cancel</Btn>
             <Btn type="submit" variant="primary" disabled={loading} onClick={handleSubmit}>
               {loading ? 'Saving...' : 'Save Medicine'}
             </Btn>

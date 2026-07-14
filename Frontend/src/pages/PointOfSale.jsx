@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { C } from "../theme";
-import { fmtCurrency, getDaysToExpiry } from "../utils";
+import { fmtCurrency, getDaysToExpiry, escapeHtml } from "../utils";
 import { Btn, Icon, PageHdr, inputSt } from "../components/SharedUI";
 
 const makeId = () => (globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -18,9 +18,23 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
   const videoRef = useRef(null);
   const scannerInputRef = useRef(null);
   const streamRef = useRef(null);
+  const scanningRef = useRef(false);
 
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0), [cart]);
-  const grandTotal = Math.max(0, subtotal - (subtotal * discount / 100));
+  const taxPreview = useMemo(() => {
+    return cart.reduce((acc, item) => {
+      const med = medicines.find(m => (m._id || m.id) === item.medicineId);
+      const line = item.quantity * item.unitPrice;
+      acc.cgst += line * (Number(med?.cgst) || 0) / 100;
+      acc.sgst += line * (Number(med?.sgst) || 0) / 100;
+      return acc;
+    }, { cgst: 0, sgst: 0 });
+  }, [cart, medicines]);
+  const discountedSubtotal = Math.max(0, subtotal - (subtotal * (Number(discount) || 0) / 100));
+  const taxScale = subtotal > 0 ? discountedSubtotal / subtotal : 1;
+  const cgstAmount = Number((taxPreview.cgst * taxScale).toFixed(2));
+  const sgstAmount = Number((taxPreview.sgst * taxScale).toFixed(2));
+  const grandTotal = Number((discountedSubtotal + cgstAmount + sgstAmount).toFixed(2));
 
   // Filter medicines for quick-add grid
   const filteredMedicines = useMemo(() => {
@@ -96,8 +110,9 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
+        scanningRef.current = true;
         setIsCameraActive(true);
-        scanFrame();
+        requestAnimationFrame(scanFrame);
       }
     } catch (err) {
       toast.error("Failed to access camera");
@@ -105,6 +120,7 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
   };
 
   const stopCamera = () => {
+    scanningRef.current = false;
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -113,7 +129,7 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
   };
 
   const scanFrame = async () => {
-    if (!videoRef.current || !streamRef.current) return;
+    if (!scanningRef.current || !videoRef.current || !streamRef.current) return;
     try {
       const barcodeDetector = new window.BarcodeDetector({ formats: ['qr_code', 'ean_13', 'code_128', 'upc_a'] });
       const barcodes = await barcodeDetector.detect(videoRef.current);
@@ -123,11 +139,11 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
         const match = medicines.find(m => m.barcode === code);
         if (match) addToCart(match);
         else toast.error("Unrecognized barcode: " + code);
-      } else {
-        if (isCameraActive) requestAnimationFrame(scanFrame);
+      } else if (scanningRef.current) {
+        requestAnimationFrame(scanFrame);
       }
     } catch (err) {
-      if (isCameraActive) requestAnimationFrame(scanFrame);
+      if (scanningRef.current) requestAnimationFrame(scanFrame);
     }
   };
 
@@ -145,9 +161,9 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
         items: cart.map(item => ({
           medicineId: item.medicineId,
           quantity: item.quantity,
-          unitPrice: item.unitPrice
         })),
-        grandTotal
+        discountPercent: Number(discount) || 0,
+        useCustomTax: false,
       };
       const bill = await createBill(payload);
       setReceiptBill(bill);
@@ -168,17 +184,17 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
     if (!win) { toast.error("Pop-up blocked. Allow pop-ups to print receipts."); return; }
     const itemsMarkup = (bill.items || []).map(item => `
       <tr>
-        <td style="padding:5px 0;border-bottom:1px dashed #ddd;">${item.medicineName}<br/><small style="color:#888">${item.quantity} × ₹${item.unitPrice}</small></td>
-        <td style="padding:5px 0;border-bottom:1px dashed #ddd;text-align:right;font-weight:bold;">₹${item.quantity * item.unitPrice}</td>
+        <td style="padding:5px 0;border-bottom:1px dashed #ddd;">${escapeHtml(item.medicineName)}<br/><small style="color:#888">${escapeHtml(item.quantity)} × ₹${escapeHtml(item.unitPrice)}</small></td>
+        <td style="padding:5px 0;border-bottom:1px dashed #ddd;text-align:right;font-weight:bold;">₹${escapeHtml(item.quantity * item.unitPrice)}</td>
       </tr>
     `).join("");
-    const html = `<html><head><meta charset="utf-8"/><title>Receipt ${bill.billNo}</title>
+    const html = `<html><head><meta charset="utf-8"/><title>Receipt ${escapeHtml(bill.billNo)}</title>
       <style>body{font-family:monospace;font-size:13px;margin:0;padding:20px;color:#000;width:320px;}.center{text-align:center;}h2{margin:5px 0;font-size:17px;}p{margin:3px 0;}table{width:100%;border-collapse:collapse;margin-top:10px;}th{border-bottom:2px solid #000;padding-bottom:5px;text-align:left;}.totals{margin-top:10px;border-top:2px solid #000;padding-top:10px;}.total-row{display:flex;justify-content:space-between;font-weight:bold;font-size:15px;}@media print{body{padding:0;}}</style>
       </head><body onload="window.print();">
-      <div class="center"><h2>${profile.pharmacyName || "Pharmacy"}</h2><p>${profile.address || ""}</p><p>${profile.phone || ""}</p><p>================================</p><p><strong>Receipt: ${bill.billNo}</strong></p><p>Date: ${new Date(bill.date || bill.createdAt).toLocaleString()}</p>${bill.customerName && bill.customerName !== "Walk-in Customer" ? `<p>Customer: ${bill.customerName}</p>` : ""}</div>
+      <div class="center"><h2>${escapeHtml(profile.pharmacyName || "Pharmacy")}</h2><p>${escapeHtml(profile.address || "")}</p><p>${escapeHtml(profile.phone || "")}</p><p>================================</p><p><strong>Receipt: ${escapeHtml(bill.billNo)}</strong></p><p>Date: ${escapeHtml(new Date(bill.date || bill.createdAt).toLocaleString())}</p>${bill.customerName && bill.customerName !== "Walk-in Customer" ? `<p>Customer: ${escapeHtml(bill.customerName)}</p>` : ""}</div>
       <table><thead><tr><th>Item</th><th style="text-align:right">Amount</th></tr></thead><tbody>${itemsMarkup}</tbody></table>
-      <div class="totals"><div class="total-row"><span>TOTAL</span><span>₹${bill.grandTotal}</span></div></div>
-      <div class="center" style="margin-top:20px;"><p>Thank you for your visit!</p><p>${profile.pharmacyName || "Pharmacy"}</p></div>
+      <div class="totals"><div class="total-row"><span>TOTAL</span><span>₹${escapeHtml(bill.grandTotal)}</span></div></div>
+      <div class="center" style="margin-top:20px;"><p>Thank you for your visit!</p><p>${escapeHtml(profile.pharmacyName || "Pharmacy")}</p></div>
       </body></html>`;
     win.document.write(html);
     win.document.close();
@@ -186,7 +202,7 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <PageHdr title="Point of Sale" subtitle="Scan barcodes or search to quickly checkout customers" icon="pos" />
+      <PageHdr tag="Billing" title="Point of Sale" sub="Scan barcodes or search to quickly checkout customers" />
       
       <div style={{ display: "flex", gap: 24, flex: 1, marginTop: 24, minHeight: 0 }}>
         
@@ -328,10 +344,20 @@ export default function PointOfSale({ medicines = [], createBill, profile = {}, 
               <span>Subtotal</span>
               <span>{fmtCurrency(subtotal)}</span>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16, fontSize: 14, color: C.muted, alignItems: "center" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10, fontSize: 14, color: C.muted, alignItems: "center" }}>
               <span>Discount (%)</span>
               <input type="number" value={discount} onChange={e => setDiscount(Math.min(100, Math.max(0, Number(e.target.value))))} style={{ ...inputSt(), width: 80, padding: "5px 8px", textAlign: "right", fontSize: 13 }} min="0" max="100" />
             </div>
+            {(cgstAmount > 0 || sgstAmount > 0) && (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13, color: C.muted }}>
+                  <span>CGST</span><span>{fmtCurrency(cgstAmount)}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10, fontSize: 13, color: C.muted }}>
+                  <span>SGST</span><span>{fmtCurrency(sgstAmount)}</span>
+                </div>
+              </>
+            )}
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20, fontSize: 22, fontWeight: 800, color: C.text }}>
               <span>Total</span>
               <span style={{ color: C.teal }}>{fmtCurrency(grandTotal)}</span>

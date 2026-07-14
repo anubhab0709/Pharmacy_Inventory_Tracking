@@ -15,15 +15,34 @@ import profileRoutes from "./routes/profileRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
 import errorHandler from "./middleware/errorHandler.js";
 
+const isProd = process.env.NODE_ENV === "production";
+
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET === "change_me_in_production") {
-  if (process.env.NODE_ENV === "production") {
+  if (isProd) {
     console.error("FATAL: Set a strong JWT_SECRET before running in production");
     process.exit(1);
   }
   console.warn("⚠️  Using default JWT_SECRET — set JWT_SECRET in .env for production");
 }
 
+if (!process.env.JWT_REFRESH_SECRET || process.env.JWT_REFRESH_SECRET === process.env.JWT_SECRET) {
+  if (isProd) {
+    console.error("FATAL: Set a distinct JWT_REFRESH_SECRET (must differ from JWT_SECRET)");
+    process.exit(1);
+  }
+  if (!process.env.JWT_REFRESH_SECRET) {
+    console.warn("⚠️  JWT_REFRESH_SECRET missing — using JWT_SECRET. Set a distinct value before production.");
+  } else {
+    console.warn("⚠️  JWT_REFRESH_SECRET matches JWT_SECRET — use a distinct secret before production.");
+  }
+}
+
 const app = express();
+
+// Required when behind nginx/load balancer so rate-limit sees real client IPs
+if (process.env.TRUST_PROXY === "1" || process.env.TRUST_PROXY === "true" || isProd) {
+  app.set("trust proxy", Number(process.env.TRUST_PROXY_HOPS) || 1);
+}
 
 const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001,http://localhost:5173")
   .split(",")
@@ -31,7 +50,7 @@ const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:3000,http:
   .filter(Boolean);
 
 app.use(helmet());
-app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
+app.use(morgan(isProd ? "combined" : "dev"));
 app.use(cors({
   origin(origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
@@ -44,11 +63,24 @@ app.use(cookieParser());
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: isProd ? 200 : 500,
   standardHeaders: true,
   legacyHeaders: false,
+  message: { success: false, message: "Too many requests, try again later" },
 });
 app.use("/api", apiLimiter);
+
+const mutationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isProd ? 80 : 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Too many write requests, slow down" },
+});
+app.use("/api/bills", mutationLimiter);
+app.use("/api/medicines", mutationLimiter);
+app.use("/api/disposals", mutationLimiter);
+app.use("/api/stock-out", mutationLimiter);
 
 app.get("/health", (req, res) => res.json({ ok: true, timestamp: new Date().toISOString() }));
 
@@ -84,7 +116,7 @@ connectDB().then(() => {
     process.exit(1);
   });
 
-  const shutdown = (signal) => {
+  const shutdown = () => {
     server.close(() => process.exit(0));
     setTimeout(() => process.exit(1), 5000).unref();
   };

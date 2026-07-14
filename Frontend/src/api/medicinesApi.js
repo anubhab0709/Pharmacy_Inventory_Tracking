@@ -23,6 +23,14 @@ export async function addMedicine(data) {
   return json.data;
 }
 
+export async function bulkUpdateTaxes(data) {
+  const json = await apiFetch("/api/medicines/bulk-tax", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+  return json.data;
+}
+
 export async function updateMedicine(id, data) {
   if (!id) throw new Error("ID required");
   const json = await apiFetch(`/api/medicines/${id}`, {

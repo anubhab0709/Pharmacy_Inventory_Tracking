@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { C } from "../theme";
 
 // ═══════════════════════════════════════════════════════════════
@@ -7,6 +7,7 @@ import { C } from "../theme";
 export const Icon = ({ name, size = 16, color = "currentColor", style: sx = {} }) => {
   const s = { width: size, height: size, display: "inline-block", flexShrink: 0, ...sx };
   const icons = {
+    menu:        <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" style={s}><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>,
     eye: <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={s}><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>,
     eye_off: <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={s}><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-6 0-10-7-10-7a18.79 18.79 0 0 1 5-5.11"/><path d="M1 1l22 22"/></svg>,
     dashboard:   <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={s}><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>,
@@ -34,6 +35,8 @@ export const Icon = ({ name, size = 16, color = "currentColor", style: sx = {} }
     refresh:     <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={s}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>,
     activity:    <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={s}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
     arrowright:  <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={s}><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>,
+    arrowleft:   <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={s}><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
+    bell:        <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={s}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
     close:       <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" style={s}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
     alertcircle: <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={s}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
     shield:      <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={s}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><polyline points="9 12 11 14 15 10"/></svg>,
@@ -48,14 +51,74 @@ export const Icon = ({ name, size = 16, color = "currentColor", style: sx = {} }
 // BASIC COMPONENTS
 // ═══════════════════════════════════════════════════════════════
 export function ConfirmModal({ open, title, message, onConfirm, onCancel, confirmLabel="Delete", danger=true }) {
+  const panelRef = useRef(null);
+  const prevFocusRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    prevFocusRef.current = document.activeElement;
+    const panel = panelRef.current;
+    const focusables = () =>
+      panel
+        ? Array.from(panel.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+            .filter((el) => !el.disabled && el.offsetParent !== null)
+        : [];
+
+    const t = setTimeout(() => {
+      const nodes = focusables();
+      (nodes[nodes.length - 1] || panel)?.focus?.();
+    }, 0);
+
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onCancel?.();
+        return;
+      }
+      if (e.key !== "Tab" || !panel) return;
+      const nodes = focusables();
+      if (nodes.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener("keydown", onKeyDown);
+      prevFocusRef.current?.focus?.();
+    };
+  }, [open, onCancel]);
+
   if (!open) return null;
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.6)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(2px)"}}>
-      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,padding:28,maxWidth:440,width:"90%",animation:"fadeUp 0.15s ease",boxShadow:"0 18px 40px rgba(0,0,0,0.12)"}}>
-        <p style={{fontFamily:"'Inter',sans-serif",fontSize:20,fontWeight:700,color:C.text,marginBottom:8}}>{title}</p>
+    <div
+      role="presentation"
+      style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.6)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(2px)"}}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onCancel?.(); }}
+    >
+      <div
+        ref={panelRef}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-modal-title"
+        tabIndex={-1}
+        style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,padding:28,maxWidth:440,width:"90%",animation:"fadeUp 0.15s ease",boxShadow:"0 18px 40px rgba(0,0,0,0.12)",outline:"none"}}
+      >
+        <p id="confirm-modal-title" style={{fontFamily:"'Inter',sans-serif",fontSize:20,fontWeight:700,color:C.text,marginBottom:8}}>{title}</p>
         <p style={{color:C.muted,fontSize:14,marginBottom:24,lineHeight:1.6}}>{message}</p>
         <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
-          <Btn variant="ghost" onClick={onCancel}>Cancel</Btn>
+          <Btn variant="secondary" onClick={onCancel}>Cancel</Btn>
           <Btn variant={danger?"danger":"primary"} onClick={onConfirm}>{confirmLabel}</Btn>
         </div>
       </div>
@@ -119,9 +182,11 @@ export function Btn({ children, onClick, variant="primary", size="md", icon, dis
   const variants = {
     primary:   {background:C.teal, color:"#ffffff", border:`1px solid ${C.teal}`},
     secondary: {background:C.surface, color:C.text, border:`1px solid ${C.border}`},
-    danger:    {background:"#fff1f2", color:C.red, border:`1px solid #fecdd3`},
+    danger:    {background:"rgba(239,68,68,0.10)", color:C.red, border:"1px solid rgba(239,68,68,0.28)", backdropFilter:"blur(8px)", WebkitBackdropFilter:"blur(8px)"},
     ghost:     {background:"transparent", color:C.muted, border:`1px solid transparent`},
     purple:    {background:"#f8fafc", color:C.purple, border:`1px solid #cbd5e1`},
+    blue:      {background:"rgba(37,99,235,0.10)", color:"#2563eb", border:"1px solid rgba(37,99,235,0.28)", backdropFilter:"blur(8px)", WebkitBackdropFilter:"blur(8px)"},
+    green:     {background:"rgba(22,163,74,0.10)", color:"#16a34a", border:"1px solid rgba(22,163,74,0.28)", backdropFilter:"blur(8px)", WebkitBackdropFilter:"blur(8px)"},
   };
   const v = variants[variant];
   return (
@@ -136,14 +201,15 @@ export function Card({ children, style:sx={} }) {
   return <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,padding:22,boxShadow:"0 1px 3px rgba(0,0,0,0.04)",...sx}}>{children}</div>;
 }
 
-export function SearchBar({ value, onChange, placeholder="Search..." }) {
+export function SearchBar({ value, onChange, placeholder="Search...", compact=false }) {
   const [f,setF]=useState(false);
+  const st = compact ? { ...inputSt(f), paddingLeft: 28, paddingTop: 7, paddingBottom: 7, fontSize: 12, minHeight: 34 } : { ...inputSt(f), paddingLeft: 30 };
   return (
     <div style={{position:"relative",flex:1}}>
-      <div style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",display:"flex"}}>
-        <Icon name="search" size={14} color={C.dim}/>
+      <div style={{position:"absolute",left:compact?8:10,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",display:"flex"}}>
+        <Icon name="search" size={compact?12:14} color={C.dim}/>
       </div>
-      <input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} onFocus={()=>setF(true)} onBlur={()=>setF(false)} style={{...inputSt(f),paddingLeft:30}}/>
+      <input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} onFocus={()=>setF(true)} onBlur={()=>setF(false)} style={st}/>
     </div>
   );
 }
@@ -172,29 +238,31 @@ export function StatCard({ title, value, sub, accent, iconName, delay=0, onClick
   );
 }
 
-export function PageHdr({ tag, title, sub, accent=C.teal, actions }) {
+export function PageHdr({ tag, title, sub, accent=C.teal, actions, compact=false }) {
   return (
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:28,animation:"fadeUp 0.4s ease both",gap:16}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:compact?12:28,animation:"fadeUp 0.4s ease both",gap:16}}>
       <div>
         <p style={{fontSize:12,color:accent,fontWeight:700,marginBottom:4,textTransform:"uppercase",letterSpacing:"0.12em"}}>{tag}</p>
-        <h1 style={{fontFamily:"'Inter',sans-serif",fontSize:28,fontWeight:700,color:C.text,letterSpacing:"-0.02em",lineHeight:1.1,margin:0}}>{title}</h1>
-        {sub&&<p style={{color:C.muted,fontSize:14,marginTop:6,lineHeight:1.5}}>{sub}</p>}
+        <h1 style={{fontFamily:"'Inter',sans-serif",fontSize:compact?24:28,fontWeight:700,color:C.text,letterSpacing:"-0.02em",lineHeight:1.1,margin:0}}>{title}</h1>
+        {sub&&<p style={{color:C.muted,fontSize:14,marginTop:compact?4:6,lineHeight:1.5}}>{sub}</p>}
       </div>
       {actions&&<div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>{actions}</div>}
     </div>
   );
 }
 
-export function Table({ cols, rows, emptyMsg="No data found" }) {
+export function Table({ cols, rows, emptyMsg="No data found", compact=false }) {
+  const pad = compact ? "8px 10px" : "14px 16px";
+  const hasWidths = cols.some((c) => c.width);
   return (
-    <div style={{overflowX:"auto"}}>
-      <table style={{width:"100%",borderCollapse:"collapse",fontSize:14}}>
+    <div style={{overflowX:"auto",width:"100%"}}>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:compact?13:14,tableLayout:hasWidths?"fixed":"auto"}}>
         <thead>
           <tr style={{borderBottom:`1px solid ${C.border}`}}>
             {cols.map((c, index) => {
               const key = c.key ?? (typeof c.label === "string" ? c.label : index);
               const header = c.header ?? c.label;
-              return <th key={key} style={{padding:"14px 16px",textAlign:"left",color:C.muted,fontSize:12,fontWeight:700,whiteSpace:"nowrap",textTransform:"uppercase",letterSpacing:"0.08em"}}>{header}</th>;
+              return <th key={key} style={{padding:pad,textAlign:"left",color:C.muted,fontSize:11,fontWeight:700,whiteSpace:"nowrap",textTransform:"uppercase",letterSpacing:"0.08em",width:c.width||undefined}}>{header}</th>;
             })}
           </tr>
         </thead>
@@ -202,7 +270,7 @@ export function Table({ cols, rows, emptyMsg="No data found" }) {
           {rows.length===0&&<tr><td colSpan={cols.length} style={{padding:"48px 16px",textAlign:"center",color:C.dim,fontSize:14}}>{emptyMsg}</td></tr>}
           {rows.map((row,i)=>(
             <tr key={i} style={{borderBottom:`1px solid ${C.border}`,transition:"background 0.1s"}} onMouseEnter={e=>e.currentTarget.style.background=C.surfaceHover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-              {cols.map((c, j)=><td key={c.key ?? j} style={{padding:"14px 16px",color:C.text,verticalAlign:"middle"}}>{c.render?c.render(row):row[c.key]}</td>)}
+              {cols.map((c, j)=><td key={c.key ?? j} style={{padding:pad,color:C.text,verticalAlign:"middle",width:c.width||undefined}}>{c.render?c.render(row):row[c.key]}</td>)}
             </tr>
           ))}
         </tbody>

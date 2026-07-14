@@ -22,9 +22,14 @@ export async function sendOtpEmail({ to, otp, shopName }) {
   const client = getClient();
 
   if (!client) {
-    console.log(
-      `[PharmaCare OTP] ${to} | Shop: ${shopName} → ${otp} (no RESEND_API_KEY — dev fallback)`,
-    );
+    if (process.env.NODE_ENV !== "production") {
+      console.log(
+        `[PharmaCare OTP] ${to} | Shop: ${shopName} → ${otp} (no RESEND_API_KEY — local/dev fallback only)`,
+      );
+    } else {
+      console.error("[PharmaCare OTP] RESEND_API_KEY missing — cannot send OTP in production");
+      throw new Error("Email service is not configured. Contact support.");
+    }
     return { sent: false, devFallback: true };
   }
 
@@ -96,9 +101,14 @@ export async function sendPasswordResetEmail({ to, otp }) {
   const client = getClient();
 
   if (!client) {
-    console.log(
-      `[PharmaCare Password Reset] ${to} → ${otp} (no RESEND_API_KEY — dev fallback)`,
-    );
+    if (process.env.NODE_ENV !== "production") {
+      console.log(
+        `[PharmaCare Password Reset] ${to} → ${otp} (no RESEND_API_KEY — local/dev fallback only)`,
+      );
+    } else {
+      console.error("[PharmaCare Password Reset] RESEND_API_KEY missing — cannot send OTP in production");
+      throw new Error("Email service is not configured. Contact support.");
+    }
     return { sent: false, devFallback: true };
   }
 

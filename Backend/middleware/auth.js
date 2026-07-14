@@ -14,6 +14,9 @@ export async function authenticate(req, res, next) {
   const token = header.slice(7);
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
+    if (payload.type === "refresh") {
+      return res.status(401).json({ success: false, message: "Invalid or expired token" });
+    }
     const user = await User.findById(payload.sub).select("name email phone isActive");
     if (!user || !user.isActive) {
       return res.status(401).json({ success: false, message: "Account inactive or not found" });
